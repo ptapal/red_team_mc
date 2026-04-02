@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 class UCBSelector:
-    """UCB1 bandit. Each arm is pulled once before UCB scores are used."""
+    """UCB bandit. Each arm is pulled once before UCB scores are used."""
 
     def __init__(self, n_arms: int, c: float = math.sqrt(2)):
         self.n_arms  = n_arms

@@ -8,7 +8,7 @@ def _plot_day(ucb, far_per_arm, far_vs_strength, logs, day, out_dir):
     fig.suptitle(f"EEG Red-Teaming — {day} (within-session)",
                  fontsize=14, fontweight="bold")
 
-    # (A) FAR per arm
+    # FAR per arm
     ax     = axes[0, 0]
     names  = list(far_per_arm.keys())
     fars   = list(far_per_arm.values())
@@ -24,14 +24,14 @@ def _plot_day(ucb, far_per_arm, far_vs_strength, logs, day, out_dir):
     ax.set_title("(A) FAR per Attack Arm")
     ax.legend(fontsize=8)
 
-    # (B) UCB pull counts
+    # UCB pull counts
     ax = axes[0, 1]
     ax.bar(ARM_NAMES, ucb.counts, color="#4C72B0", edgecolor="white")
     ax.set_xticklabels(ARM_NAMES, rotation=35, ha="right", fontsize=8)
     ax.set_ylabel("Pull count")
     ax.set_title("(B) UCB Arm Selection Frequency")
 
-    # (C) Cumulative FAR
+    # Cumulative FAR
     ax       = axes[1, 0]
     accepted = np.array([l["accepted"] for l in logs], dtype=float)
     cum_far  = np.cumsum(accepted) / (np.arange(len(accepted)) + 1)
@@ -41,7 +41,7 @@ def _plot_day(ucb, far_per_arm, far_vs_strength, logs, day, out_dir):
     ax.set_title("(C) Cumulative FAR Over Iterations")
     ax.grid(True, alpha=0.3)
 
-    # (D) FAR vs perturbation strength (top-3 arms)
+    # FAR vs perturbation strength (top-3 arms)
     ax   = axes[1, 1]
     top3 = sorted(far_per_arm, key=far_per_arm.get, reverse=True)[:3]
     for color, name in zip(["#E74C3C", "#F39C12", "#2ECC71"], top3):
@@ -64,11 +64,6 @@ def _plot_day(ucb, far_per_arm, far_vs_strength, logs, day, out_dir):
 
 
 def _plot_cross_day(all_results: dict, output_dir: str):
-    """
-    Aggregate plot: overall FAR and per-arm FAR heatmap across days.
-    This is purely a post-hoc visualisation — it does not combine
-    data across days, only their independently-computed FAR scores.
-    """
     if len(all_results) < 2:
         return
 
@@ -79,7 +74,7 @@ def _plot_cross_day(all_results: dict, output_dir: str):
     fig.suptitle("Cross-Day Attack Summary (within-session evaluation)",
                  fontsize=13, fontweight="bold")
 
-    # Overall FAR by day
+    # vverall FAR by day
     ax = axes[0]
     ax.bar(days, overall_far, color="#2196F3", edgecolor="white")
     ax.set_ylabel("Overall FAR")
@@ -88,7 +83,7 @@ def _plot_cross_day(all_results: dict, output_dir: str):
     for i, v in enumerate(overall_far):
         ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontsize=9)
 
-    # Per-arm FAR heatmap (rows=days, cols=arms)
+    # per-arm FAR heatmap (rows=days, cols=arms)
     ax     = axes[1]
     matrix = np.array([[all_results[d]["far_per_arm"].get(n, 0.0)
                          for n in ARM_NAMES] for d in days])

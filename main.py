@@ -1,27 +1,3 @@
-"""
-EEG Authentication Red-Teaming via MCTS / Multi-Armed Bandit (UCB)
-===================================================================
-Within-session evaluation (Option A):
-  For each day, enrolment and attack trials come from the SAME session.
-  Authenticator is fitted on 70% of each subject's trials for that day,
-  attacked using the remaining 30%. No cross-day contamination.
-
-Arm index  Attack type
-─────────────────────────────────────────────────────
-  0        Gaussian noise injection
-  1        Correlated (structured) noise injection
-  2        Temporal distortion (shuffle / crop / shift)
-  3        Frequency-band manipulation
-  4        Covariance interpolation (impersonation)
-  5        Signal replay with jitter
-  6        Channel coupling injection
-  7        Eigenvalue perturbation
-
-Usage
-─────
-python eeg_redteam_mcts.py
-python eeg_redteam_mcts.py --n_iter 2000 --c_ucb 1.5 --output_dir results/redteam
-"""
 import argparse
 import warnings
 
@@ -52,7 +28,6 @@ if __name__ == "__main__":
     sessions = load_sessions(participants, days)
     print(f"Found {len(sessions)} valid participant x day sessions.")
 
-    # Build label index from all sessions (consistent integer labels across days)
     all_participants = sorted({s["participant"] for s in sessions})
     cls2idx          = {p: i for i, p in enumerate(all_participants)}
     print(f"Subjects ({len(all_participants)}): {all_participants}")

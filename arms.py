@@ -7,14 +7,14 @@ class AttackArms:
         self.rng    = rng
         self.s_freq = s_freq
 
-    # ── 0: Gaussian noise ────────────────────────────────────────────────────
+    # gaussian noise
     def gaussian_noise(self, trial, sigma=None):
         if sigma is None:
             sigma = self.rng.uniform(0.005, 0.2)
         return trial + self.rng.normal(0, sigma, size=trial.shape), \
                {"arm": 0, "name": "gaussian_noise", "sigma": sigma}
 
-    # ── 1: Correlated noise ───────────────────────────────────────────────────
+    # correlated noise
     def correlated_noise(self, trial, sigma=None, n_components=None):
         n_ch, n_t = trial.shape
         if sigma is None:
@@ -28,7 +28,7 @@ class AttackArms:
                {"arm": 1, "name": "correlated_noise",
                 "sigma": sigma, "n_components": n_components}
 
-    # ── 2: Temporal distortion ────────────────────────────────────────────────
+    # temporal distorsion
     def temporal_distortion(self, trial, mode=None):
         modes = ["shuffle", "crop_pad", "shift"]
         if mode is None:
@@ -62,7 +62,7 @@ class AttackArms:
 
         return out[:, :n_t], params
 
-    # ── 3: Frequency manipulation ─────────────────────────────────────────────
+    # frequency manipulation
     def frequency_manipulation(self, trial, gain=None):
         bands = {"delta": (0.5, 4), "theta": (4, 8), "alpha": (8, 13),
                  "beta": (13, 30), "gamma": (30, 80)}
@@ -81,14 +81,14 @@ class AttackArms:
         return out, {"arm": 3, "name": "freq_manipulation",
                      "band": band_name, "gain": gain}
 
-    # ── 4: Covariance interpolation ───────────────────────────────────────────
+    # covariance interpolation
     def covariance_interpolation(self, trial, impostor_trial, lam=None):
         if lam is None:
             lam = self.rng.uniform(0.0, 0.5)
         out = (1 - lam) * trial + lam * impostor_trial
         return out, {"arm": 4, "name": "cov_interpolation", "lambda": lam}
 
-    # ── 5: Replay + jitter ────────────────────────────────────────────────────
+    # replay + jitter
     def replay_jitter(self, trial, noise_std=None, shift_max=None):
         if noise_std is None:
             noise_std = self.rng.uniform(1e-4, 0.05)
@@ -100,7 +100,7 @@ class AttackArms:
         return out, {"arm": 5, "name": "replay_jitter",
                      "noise_std": noise_std, "shift": shift}
 
-    # ── 6: Channel coupling ───────────────────────────────────────────────────
+    # channel coupling
     def channel_coupling(self, trial, alpha=None):
         n_ch = trial.shape[0]
         if alpha is None:
@@ -111,7 +111,7 @@ class AttackArms:
         return out, {"arm": 6, "name": "channel_coupling",
                      "alpha": alpha, "ch_i": int(i), "ch_j": int(j)}
 
-    # ── 7: Eigenvalue perturbation ────────────────────────────────────────────
+    # eigenvalue perturbation
     def eigenvalue_perturbation(self, trial, mode=None, factor=None):
         modes = ["amplify", "flatten"]
         if mode is None:
@@ -149,7 +149,7 @@ class AttackArms:
         return out, {"arm": 7, "name": "eigenvalue_perturbation",
                      "mode": mode, "factor": factor}
 
-    # ── dispatch ──────────────────────────────────────────────────────────────
+    # dispatch 
     def apply(self, arm_idx, trial, impostor_trial=None):
         if arm_idx == 0:  return self.gaussian_noise(trial)
         if arm_idx == 1:  return self.correlated_noise(trial)

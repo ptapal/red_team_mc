@@ -29,3 +29,11 @@ def trial_to_cov_vec(trial: np.ndarray) -> np.ndarray:
     vec = cov[np.triu_indices_from(cov)]
     return vec / (np.linalg.norm(vec) + 1e-9)
 
+def augment_cov_vec(vec: np.ndarray,
+                    rng: np.random.Generator,
+                    noise_std: float = 0.01) -> np.ndarray:
+    """
+    Augment a single covariance vector with small Gaussian noise, then re-normalise.
+    """
+    noisy = vec + rng.normal(0, noise_std, size=vec.shape)
+    return noisy / (np.linalg.norm(noisy) + 1e-9)

@@ -18,11 +18,11 @@ def _attack_loop(auth: RiemannAuthenticator,
                  day: str,
                  rng: np.random.Generator) -> tuple[list[dict], dict[int, list]]:
     """
-    Run n_iter UCB attack iterations against a fitted authenticator.
+    run n_iter UCB attack iterations against a fitted authenticator.
 
     X_test  : list of raw EEG trials (attacks need raw signal, not cov vecs)
     y_test  : integer labels aligned with X_test
-    Both must come exclusively from the same day as the enrolment data.
+    both must come exclusively from the same day as the enrolment data.
     """
     X_test_arr = np.array(X_test)
     classes    = np.unique(y_test)
@@ -32,12 +32,12 @@ def _attack_loop(auth: RiemannAuthenticator,
     for t in range(n_iter):
         arm = ucb.select()
 
-        # Sample victim trial from within this day's test pool
+        # sample victim trial from within this day's test pool
         victim_i     = int(rng.integers(len(X_test_arr)))
         trial_orig   = X_test_arr[victim_i]
         true_subject = int(y_test[victim_i])
 
-        # Impersonation arm: impostor must also come from this day's test pool
+        # arm: impostor must also come from this day's test pool
         impostor_trial = None
         if arm == 4:
             other_cls = [c for c in classes if c != true_subject]
@@ -54,12 +54,12 @@ def _attack_loop(auth: RiemannAuthenticator,
             ucb.update(arm, 0.0)
             continue
 
-        # Attacker claims to be a different subject → directly measures FAR
+        # attacker claims to be a different subject to measure FAR
         other_cls      = [c for c in classes if c != true_subject]
         target_subject = int(rng.choice(other_cls)) if len(other_cls) > 0 \
                          else int(true_subject)
 
-        # Guard: skip if target has no template (edge case for small sessions)
+        # guard: skip if target has no template (sessions too small)
         if target_subject not in auth.templates:
             ucb.update(arm, 0.0)
             continue
@@ -95,10 +95,6 @@ def _attack_loop(auth: RiemannAuthenticator,
     return logs, strength_logs
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# MAIN RUNNER
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def run_redteam(sessions:    list[dict],
                 cls2idx:     dict[str, int],
                 n_iter:      int   = DEFAULT_N_ITER,
@@ -106,14 +102,9 @@ def run_redteam(sessions:    list[dict],
                 output_dir:  str   = DEFAULT_OUTPUT_DIR,
                 seed:        int   = SEED) -> dict:
     """
-    Within-session red-teaming (Option A).
+    One independent UCB bandit is run per day. Enrolment and attack trials are drawn exclusively from the same 
+    participant x day session no cross-day contamination at any point.
 
-    One independent UCB bandit is run per day. Enrolment and attack trials
-    are drawn exclusively from the same participant x day session —
-    no cross-day contamination at any point.
-
-    Parameters
-    ----------
     sessions   : output of load_sessions()
     cls2idx    : participant-string to integer-label mapping
     n_iter     : UCB iterations per day
@@ -121,14 +112,12 @@ def run_redteam(sessions:    list[dict],
     output_dir : root directory for saved results
     seed       : global RNG seed
 
-    Returns
-    -------
-    dict keyed by day string, each containing logs / FAR tables / UCB state
+    returns: dict keyed by day string, each containing logs / FAR tables / UCB state
     """
     rng = np.random.default_rng(seed)
     os.makedirs(output_dir, exist_ok=True)
 
-    # ── Build within-session splits (no cross-day leakage) ───────────────────
+    # build within-session splits 
     print("Building within-session enrolment / test splits …")
     day_data = build_within_session_splits(sessions, cls2idx, rng, ENROL_FRAC)
 
@@ -137,7 +126,6 @@ def run_redteam(sessions:    list[dict],
 
     all_results = {}
 
-    # ── Per-day loop ──────────────────────────────────────────────────────────
     for day, data in sorted(day_data.items()):
         n_subjects = len(np.unique(data["y_enrol"]))
         print(f"\n{'='*62}")
@@ -145,25 +133,31 @@ def run_redteam(sessions:    list[dict],
               f"test={len(data['X_test'])}  |  subjects={n_subjects}")
         print(f"{'='*62}")
 
-        # 1. Precompute covariance vectors for THIS day's enrolment trials only
+        # 1. precompute covariance vectors for THIS day's enrolment trials only
         print("  Computing enrolment covariances …")
         cov_enrol = np.array([trial_to_cov_vec(x) for x in data["X_enrol"]])
 
-        # 2. Fit authenticator on THIS day's enrolment data only
+        # 2. fit authenticator on THIS day's enrolment data only
         auth = RiemannAuthenticator(threshold_percentile=10.0)
         auth.fit(cov_enrol, data["y_enrol"])
         print(f"  tau = {auth.tau:.4f}  |  "
               f"templates: {sorted(auth.templates.keys())}")
+        
+        """ # HYBRID USAGE
+        auth = HybridAuthenticator(threshold_percentile=10.0)
+        auth.fit(cov_enrol, data["y_enrol"], rng)
+        print(f"  tau = {auth.tau:.4f}  |  n_classes = {auth.n_classes}")
+        """
 
-        # 3. Fresh UCB bandit and attack arms for this day
+        # 3. fresh UCB bandit and attack arms for this day
         ucb  = UCBSelector(n_arms=N_ARMS, c=c_ucb)
         arms = AttackArms(rng=rng, s_freq=s_freq)
 
-        # 4. Attack loop — test trials are from this same day only
+        # 4. attack loop, where test trials are from this same day only
         print(f"  Running {n_iter} UCB iterations …")
         logs, strength_logs = _attack_loop(
             auth   = auth,
-            X_test = data["X_test"],   # same-day test trials
+            X_test = data["X_test"],  
             y_test = data["y_test"],
             ucb    = ucb,
             arms   = arms,
@@ -176,7 +170,7 @@ def run_redteam(sessions:    list[dict],
             print(f"  [warn] No valid attack logs for {day}, skipping.")
             continue
 
-        # 5. Per-arm FAR
+        # 5. per-arm FAR
         far_per_arm = {}
         for i, name in enumerate(ARM_NAMES):
             arm_logs = [l for l in logs if l["arm"] == i]
@@ -199,7 +193,7 @@ def run_redteam(sessions:    list[dict],
                     bin_mid.append(float((lo + hi) / 2))
             far_vs_strength[arm_i] = {"bin_mid": bin_mid, "far": bin_far}
 
-        # 7. Wilcoxon: best vs worst arm for this day
+        # 7. wilcoxon: best vs worst arm for this day
         arm_rewards = {i: [l["accepted"] for l in logs if l["arm"] == i]
                        for i in range(N_ARMS)}
         sorted_arms = sorted(arm_rewards,
@@ -216,7 +210,7 @@ def run_redteam(sessions:    list[dict],
             print(f"\n  Wilcoxon ({ARM_NAMES[best_arm]} vs {ARM_NAMES[worst_arm]}): "
                   f"stat={stat:.3f}, p={p:.4f}")
 
-        # 8. Console summary
+        # 8. console summary
         overall_far = sum(l["accepted"] for l in logs) / len(logs)
         print(f"\n  Overall FAR [{day}]: {overall_far:.3f}")
         print(f"  {'Arm':<26}  {'FAR':>6}  {'Pulls':>6}  {'UCB':>8}")
@@ -227,24 +221,12 @@ def run_redteam(sessions:    list[dict],
                   f"{ucb.counts[i]:>6}  "
                   f"{ucb.ucb_scores()[i]:>8.4f}")
 
-        # 9. Save per-day artefacts
+        # 9. save per-day artefacts
         day_dir = os.path.join(output_dir, day)
         os.makedirs(day_dir, exist_ok=True)
 
         pd.DataFrame(logs).to_csv(
             os.path.join(day_dir, "attack_log.csv"), index=False)
-
-        summary = {
-            "day":         day,
-            "n_iter":      n_iter,
-            "c_ucb":       c_ucb,
-            "tau":         auth.tau,
-            "overall_FAR": overall_far,
-            "far_per_arm": far_per_arm,
-            "ucb_counts":  ucb.counts.tolist(),
-            "ucb_means":   ucb.means.tolist(),
-            "ucb_scores":  ucb.ucb_scores().tolist(),
-        }
 
         _plot_day(ucb, far_per_arm, far_vs_strength, logs, day, day_dir)
 
@@ -256,7 +238,7 @@ def run_redteam(sessions:    list[dict],
             "overall_FAR":     overall_far,
         }
 
-    # Cross-day summary plot (does not use cross-day data, just aggregates results)
+    # cross-day summary plot (does not use cross-day data, just aggregates results)
     _plot_cross_day(all_results, output_dir)
 
     return all_results
