@@ -1,28 +1,31 @@
 """
-VAE-based generative perturbation attack — all 8 datasets.
+Surrogate-gradient GAN attack — all 8 datasets.
 
-Exact same experimental conditions as the UCB MAB evaluation in
-run_analysis_normalised.py:
+True minimax: G and D fight via backprop.  S is a frozen surrogate trained
+on enrollment data that makes the Riemannian authenticator differentiable.
+
+Conditions shared with UCB / VAE / pseudo-GAN evaluations:
   - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
-  - Same reward function: r = (1-lam)*accepted + lam*max(0, 1-budget), lam=0.3
-  - Same operating points: p in {5, 10, 15, 20, 25}
+  - Same dual-reward weight λ=0.3 (authenticator/budget tradeoff in G's loss)
   - Same T=1000 iterations per (day, p) combination
+  - FAR measured on the real Riemannian authenticator (not S)
 
 Output per dataset
 ------------------
-  results_vae_{ds}/adv_far_vae.csv      — FAR mean±std + mean budget, same format
-                                           as adv_far_std.csv for direct comparison
-  results_vae_{ds}/convergence_p10.png  — rolling FAR (window=100) vs. iteration
+  results_sgan_{ds}/adv_far_sgan.csv    — FAR mean±std + mean budget
+  results_sgan_{ds}/convergence_p10.png — rolling FAR vs. iteration
+  results_sgan_{ds}/defense_p10.csv     — D detection metrics at p=10
 
 Comparison output
 -----------------
-  results_vae_comparison/vae_vs_ucb_p10.png  — side-by-side bar chart
-  results_vae_comparison/vae_vs_ucb_full.csv — all datasets, all p values
+  results_sgan_comparison/sgan_vs_others_p10.png  — 4-way bar: UCB/VAE/GAN/SGAN
 """
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
-import math
 
 import numpy as np
 import pandas as pd
@@ -34,83 +37,77 @@ warnings.filterwarnings("ignore")
 
 from helpers  import load_sessions
 from config   import SEED
-from utils    import trial_to_cov_vec, cosine_sim
-from run_analysis_normalised import (
+from bandit_all import (
     WON_15, TANNER_20, CHO_20, LEE_20,
     TANNER_DAYS, COGBCI_DAYS, COGBCI_SUBS, CHO_DAYS, LEE_DAYS,
     DATASETS as UCB_DATASETS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     P_ATTACK,
 )
-from vae_attack import run_vae_attack
+from attacks.sgan import (
+    run_surrogate_gan_attack, eval_discriminator, generate_perturbed,
+)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LAMBDA = 0.3
 N_ITER = 1000
+N_DEFENSE_EVAL = 200   # raw trials scored by D for defense metrics
 
 DATASETS = {
     "zhang": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels",
         participants = [f"S{i}" for i in range(1, 16)],
         days         = ["Day_1", "Day_7", "Day_80", "Day_200"],
-        out_dir      = "results_vae_zhang",
+        out_dir      = "results_sgan_zhang",
     ),
     "won": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/won",
         participants = WON_15,
         days         = ["Day_1"],
-        out_dir      = "results_vae_won",
+        out_dir      = "results_sgan_won",
     ),
     "tanner_eo": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo",
         participants = TANNER_20,
         days         = TANNER_DAYS,
-        out_dir      = "results_vae_tanner_eo",
+        out_dir      = "results_sgan_tanner_eo",
     ),
     "tanner_ec": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec",
         participants = TANNER_20,
         days         = TANNER_DAYS,
-        out_dir      = "results_vae_tanner_ec",
+        out_dir      = "results_sgan_tanner_ec",
     ),
     "cogbci_eo": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo",
         participants = COGBCI_SUBS,
         days         = COGBCI_DAYS,
-        out_dir      = "results_vae_cogbci_eo",
+        out_dir      = "results_sgan_cogbci_eo",
     ),
     "cogbci_ec": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec",
         participants = COGBCI_SUBS,
         days         = COGBCI_DAYS,
-        out_dir      = "results_vae_cogbci_ec",
+        out_dir      = "results_sgan_cogbci_ec",
     ),
     "cho": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cho",
         participants = CHO_20,
         days         = CHO_DAYS,
-        out_dir      = "results_vae_cho",
+        out_dir      = "results_sgan_cho",
     ),
     "lee": dict(
         erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/lee",
         participants = LEE_20,
         days         = LEE_DAYS,
-        out_dir      = "results_vae_lee",
+        out_dir      = "results_sgan_lee",
     ),
 }
 
 
 # ── per-dataset runner ────────────────────────────────────────────────────────
 
-def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
-    """
-    Runs the VAE attack at all P_ATTACK operating points.
-
-    Enrollment/test splits are drawn with the same seed and fraction (rho=0.5)
-    as in run_ucb_attack(), so the two evaluations share identical splits.
-
-    Returns {p: {mean_far, std_far, mean_budget, rolling_far (only at p=10)}}
-    """
+def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
     rng = np.random.default_rng(SEED)
     all_participants = sorted({s["participant"] for s in sessions})
     cls2idx  = {p: i for i, p in enumerate(all_participants)}
@@ -118,12 +115,16 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
     by_day   = pool_enrol(splits)
     all_results = {}
 
+    # store last day's trained G and D at p=10 for defense evaluation
+    last_G, last_D, last_test_X = None, None, None
+
     for p in P_ATTACK:
         per_subj_far    = []
         budget_accepted = []
-        rolling_far     = []      # only collected at p == 10
+        rolling_far     = []
 
         for day, day_splits in sorted(by_day.items()):
+            # ── enrollment pool ───────────────────────────────────────────────
             all_enrol_X = [x for sp in day_splits for x in sp["X_enrol"]]
             all_enrol_y = [cls2idx[sp["participant"]] for sp in day_splits
                            for _ in sp["X_enrol"]]
@@ -132,17 +133,19 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
             templates = build_templates(cov_enrol, y_enrol)
             tau       = compute_tau(templates, cov_enrol, y_enrol, p)
 
+            # ── test pool ─────────────────────────────────────────────────────
             all_test_X = [x for sp in day_splits for x in sp["X_test"]]
             all_test_y = [cls2idx[sp["participant"]] for sp in day_splits
                           for _ in sp["X_test"]]
             y_test = np.array(all_test_y, dtype=int)
 
-            # deterministic torch seed per (p, day) so runs are reproducible
             torch_seed = SEED + p * 31 + abs(hash(day)) % 10_000
 
-            logs, per_tgt = run_vae_attack(
+            # run_surrogate_gan_attack returns (logs, per_tgt, D, S, G)
+            logs, per_tgt, D, S, G = run_surrogate_gan_attack(
                 templates, tau,
                 all_test_X, y_test,
+                all_enrol_X, y_enrol,
                 N_ITER, rng,
                 lam=LAMBDA, device=DEVICE,
                 seed=torch_seed,
@@ -160,6 +163,7 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
 
             if p == 10:
                 rolling_far.extend([int(l["accepted"]) for l in logs])
+                last_G, last_D, last_test_X = G, D, all_test_X
 
         mean_far    = float(np.mean(per_subj_far))    if per_subj_far    else 0.0
         std_far     = float(np.std(per_subj_far))     if per_subj_far    else 0.0
@@ -180,12 +184,31 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
                  FAR_std =all_results[p]["std_far"],
                  Budget_mean=all_results[p]["mean_budget"])
             for p in P_ATTACK]
-    pd.DataFrame(rows).to_csv(os.path.join(out_dir, "adv_far_vae.csv"), index=False)
+    pd.DataFrame(rows).to_csv(os.path.join(out_dir, "adv_far_sgan.csv"), index=False)
 
     # ── convergence plot (p=10) ───────────────────────────────────────────────
     rf = all_results.get(10, {}).get("rolling_far", [])
     if rf:
         _plot_convergence(rf, ds_name, out_dir)
+
+    # ── defense evaluation at p=10 ────────────────────────────────────────────
+    # Use the trained G from the last day's p=10 run to generate perturbed samples,
+    # then evaluate D's ability to separate genuine vs. adversarial raw EEG.
+    if last_G is not None and last_D is not None and last_test_X:
+        n = min(N_DEFENSE_EVAL, len(last_test_X))
+        genuine_eval   = last_test_X[:n]
+        perturbed_eval = generate_perturbed(last_G, genuine_eval, device=DEVICE)
+
+        def_metrics = eval_discriminator(
+            last_D, genuine_eval, perturbed_eval, device=DEVICE
+        )
+        pd.DataFrame([def_metrics]).to_csv(
+            os.path.join(out_dir, "defense_p10.csv"), index=False
+        )
+        print(f"  Defense (D): TPR={def_metrics['tpr']:.3f}  "
+              f"TNR={def_metrics['tnr']:.3f}  "
+              f"D(genuine)={def_metrics['mean_d_genuine']:.3f}  "
+              f"D(perturbed)={def_metrics['mean_d_perturbed']:.3f}")
 
     return all_results
 
@@ -200,12 +223,12 @@ def _plot_convergence(rolling_far: list, ds_name: str, out_dir: str,
     x        = np.arange(len(smoothed)) + window
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(x, smoothed, color="darkorange", lw=1.5, label="VAE rolling FAR")
+    ax.plot(x, smoothed, color="purple", lw=1.5, label="SGAN rolling FAR")
     ax.axhline(arr.mean(), color="gray", ls="--", lw=1,
                label=f"mean FAR = {arr.mean():.3f}")
     ax.set_xlabel("Iteration (pooled across days)", fontsize=12)
     ax.set_ylabel(f"Rolling FAR (window={window})", fontsize=12)
-    ax.set_title(f"{ds_name} — VAE attack convergence at $p=10$", fontsize=11)
+    ax.set_title(f"{ds_name} — surrogate GAN convergence at $p=10$", fontsize=11)
     ax.set_ylim(-0.02, 1.02)
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
@@ -214,49 +237,54 @@ def _plot_convergence(rolling_far: list, ds_name: str, out_dir: str,
     plt.close()
 
 
-def _plot_comparison(summary_vae: dict, summary_ucb: dict,
+def _plot_comparison(summary_sgan: dict, summary_vae: dict,
+                     summary_gan: dict,  summary_ucb: dict,
                      out_dir: str) -> None:
-    """Bar chart: UCB MAB vs VAE at p=10 for all 8 datasets."""
     ds_order = ["zhang", "won",
                 "tanner_eo", "tanner_ec", "cogbci_eo", "cogbci_ec",
                 "cho", "lee"]
-    ds_names = [d for d in ds_order if d in summary_vae]
+    ds_names = [d for d in ds_order if d in summary_sgan]
 
-    vae_far = [summary_vae[d].get(10, {}).get("mean_far", 0.0) for d in ds_names]
-    vae_std = [summary_vae[d].get(10, {}).get("std_far",  0.0) for d in ds_names]
-    ucb_far = [summary_ucb.get(d, {}).get(10, {}).get("mean_far", float("nan"))
-               for d in ds_names]
-    ucb_std = [summary_ucb.get(d, {}).get(10, {}).get("std_far",  0.0)
-               for d in ds_names]
+    def _m(s, ds): return s.get(ds, {}).get(10, {}).get("mean_far", float("nan"))
+    def _e(s, ds): return s.get(ds, {}).get(10, {}).get("std_far",  0.0)
 
-    x, w = np.arange(len(ds_names)), 0.38
-    fig, ax = plt.subplots(figsize=(13, 5))
-    ax.bar(x - w/2, ucb_far, w, yerr=ucb_std, capsize=4,
-           color="steelblue", alpha=0.85, label="UCB MAB")
-    ax.bar(x + w/2, vae_far, w, yerr=vae_std, capsize=4,
-           color="darkorange", alpha=0.85, label="VAE generator")
+    x, w = np.arange(len(ds_names)), 0.2
+    fig, ax = plt.subplots(figsize=(14, 5))
+    for i, (label, summary, color) in enumerate([
+        ("UCB MAB",    summary_ucb,  "steelblue"),
+        ("VAE",        summary_vae,  "darkorange"),
+        ("pseudo-GAN", summary_gan,  "seagreen"),
+        ("SGAN",       summary_sgan, "purple"),
+    ]):
+        vals = [_m(summary, d) for d in ds_names]
+        errs = [_e(summary, d) for d in ds_names]
+        ax.bar(x + (i - 1.5) * w, vals, w, yerr=errs, capsize=3,
+               color=color, alpha=0.85, label=label)
+
     ax.set_xticks(x)
     ax.set_xticklabels([d.replace("_", "\n") for d in ds_names], fontsize=9)
     ax.set_ylabel("Adversarial FAR (mean ± std)", fontsize=12)
-    ax.set_title("UCB MAB vs. VAE perturbation generator — adversarial FAR at $p=10$",
-                 fontsize=11)
-    ax.legend(fontsize=10)
-    ax.set_ylim(0, 1.05)
+    ax.set_title(
+        "UCB / VAE / pseudo-GAN / surrogate-GAN — adversarial FAR at $p=10$",
+        fontsize=11,
+    )
+    ax.legend(fontsize=9)
+    ax.set_ylim(0, 1.1)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, "vae_vs_ucb_p10.png"), dpi=150)
+    plt.savefig(os.path.join(out_dir, "sgan_vs_others_p10.png"), dpi=150)
     plt.close()
-    print(f"Saved → {out_dir}/vae_vs_ucb_p10.png")
+    print(f"Saved → {out_dir}/sgan_vs_others_p10.png")
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print(f"Device: {DEVICE}")
-    summary_vae = {}
+    summary_sgan = {}
 
     for ds_name, cfg in DATASETS.items():
-        print(f"\n{'='*64}\n  {ds_name.upper()}  (VAE)\n{'='*64}")
+        print(f"\n{'='*64}\n  {ds_name.upper()}  (Surrogate GAN)\n{'='*64}")
         os.makedirs(cfg["out_dir"], exist_ok=True)
 
         sessions = load_sessions(cfg["participants"], cfg["days"],
@@ -267,57 +295,47 @@ if __name__ == "__main__":
             print("  No sessions found — skipping.")
             continue
 
-        summary_vae[ds_name] = run_vae_dataset(sessions, cfg["out_dir"], ds_name)
+        summary_sgan[ds_name] = run_sgan_dataset(
+            sessions, cfg["out_dir"], ds_name
+        )
 
-    # ── load UCB results from existing CSVs ───────────────────────────────────
-    summary_ucb = {}
-    for ds_name, cfg in UCB_DATASETS.items():
-        csv_path = os.path.join(cfg["out_dir"], "adv_far_std.csv")
-        if not os.path.exists(csv_path):
-            continue
-        df = pd.read_csv(csv_path)
-        summary_ucb[ds_name] = {}
+    # ── load prior results for 4-way comparison ───────────────────────────────
+    def _load(out_dir, fname):
+        path = os.path.join(out_dir, fname)
+        if not os.path.exists(path):
+            return {}
+        df = pd.read_csv(path)
+        out = {}
         for _, row in df.iterrows():
-            p_val = int(row["p"])
-            if p_val in P_ATTACK:
-                summary_ucb[ds_name][p_val] = dict(
-                    mean_far = float(row["FAR_mean"]),
-                    std_far  = float(row["FAR_std"]),
-                )
+            p = int(row["p"])
+            if p in P_ATTACK:
+                out[p] = dict(mean_far=float(row["FAR_mean"]),
+                              std_far =float(row["FAR_std"]))
+        return out
 
-    # ── comparison plot and CSV ───────────────────────────────────────────────
-    os.makedirs("results_vae_comparison", exist_ok=True)
-    if summary_vae and summary_ucb:
-        _plot_comparison(summary_vae, summary_ucb, "results_vae_comparison")
+    summary_ucb = {ds: _load(cfg["out_dir"], "adv_far_std.csv")
+                   for ds, cfg in UCB_DATASETS.items()}
+    summary_vae = {ds: _load(f"results_vae_{ds}", "adv_far_vae.csv")
+                   for ds in DATASETS}
+    summary_gan = {ds: _load(f"results_gan_{ds}", "adv_far_gan.csv")
+                   for ds in DATASETS}
 
-    # full comparison table across all p values
-    rows = []
-    for ds in DATASETS:
-        for p in P_ATTACK:
-            vae_m = summary_vae.get(ds, {}).get(p, {}).get("mean_far", float("nan"))
-            vae_s = summary_vae.get(ds, {}).get(p, {}).get("std_far",  float("nan"))
-            vae_b = summary_vae.get(ds, {}).get(p, {}).get("mean_budget", float("nan"))
-            ucb_m = summary_ucb.get(ds, {}).get(p, {}).get("mean_far", float("nan"))
-            ucb_s = summary_ucb.get(ds, {}).get(p, {}).get("std_far",  float("nan"))
-            rows.append(dict(dataset=ds, p=p,
-                             UCB_FAR_mean=ucb_m, UCB_FAR_std=ucb_s,
-                             VAE_FAR_mean=vae_m, VAE_FAR_std=vae_s,
-                             VAE_Budget_mean=vae_b,
-                             Delta_FAR=vae_m - ucb_m))
-    pd.DataFrame(rows).to_csv(
-        "results_vae_comparison/vae_vs_ucb_full.csv", index=False)
+    os.makedirs("results_sgan_comparison", exist_ok=True)
+    _plot_comparison(summary_sgan, summary_vae, summary_gan, summary_ucb,
+                     "results_sgan_comparison")
 
     # ── terminal summary ──────────────────────────────────────────────────────
-    print("\n\n" + "=" * 72)
-    print(f"{'Dataset':<20}  {'UCB p=10':>12}  {'VAE p=10':>12}  {'Δ':>7}")
-    print("=" * 72)
+    print("\n\n" + "=" * 96)
+    print(f"{'Dataset':<20}  {'UCB p=10':>12}  {'VAE p=10':>12}  "
+          f"{'GAN p=10':>12}  {'SGAN p=10':>12}  ΔSGAN-UCB")
+    print("=" * 96)
     for ds in DATASETS:
-        ucb_m = summary_ucb.get(ds, {}).get(10, {}).get("mean_far", float("nan"))
-        ucb_s = summary_ucb.get(ds, {}).get(10, {}).get("std_far",  float("nan"))
-        vae_m = summary_vae.get(ds, {}).get(10, {}).get("mean_far", float("nan"))
-        vae_s = summary_vae.get(ds, {}).get(10, {}).get("std_far",  float("nan"))
-        delta = vae_m - ucb_m
-        print(f"{ds:<20}  {ucb_m:.3f}±{ucb_s:.3f}    {vae_m:.3f}±{vae_s:.3f}  "
-              f"{delta:+.3f}")
+        def _m(s): return s.get(ds, {}).get(10, {}).get("mean_far", float("nan"))
+        def _e(s): return s.get(ds, {}).get(10, {}).get("std_far",  float("nan"))
+        um, vm, gm, sm = _m(summary_ucb), _m(summary_vae), _m(summary_gan), _m(summary_sgan)
+        ue, ve, ge, se = _e(summary_ucb), _e(summary_vae), _e(summary_gan), _e(summary_sgan)
+        delta = sm - um
+        print(f"{ds:<20}  {um:.3f}±{ue:.3f}    {vm:.3f}±{ve:.3f}    "
+              f"{gm:.3f}±{ge:.3f}    {sm:.3f}±{se:.3f}  {delta:+.3f}")
 
     print("\nDone.")

@@ -1,5 +1,8 @@
 """Run analysis for motor imagery datasets only (Cho + Lee)."""
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import numpy as np
 import pandas as pd
 import os, warnings
@@ -13,7 +16,7 @@ from utils import trial_to_cov_vec, cosine_sim
 from arms import AttackArms
 from ucb import UCBSelector
 from config import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
-from run_analysis_normalised import (
+from bandit_all import (
     ENROL_FRAC, LAMBDA, P_SWEEP, P_ATTACK, N_ITER,
     build_templates, compute_tau, cov_array,
     make_splits, pool_enrol,

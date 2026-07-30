@@ -14,6 +14,9 @@ wilcoxon_results.csv   — per-dataset U statistic, p-value, arm names
 wilcoxon_table.tex     — LaTeX table ready to paste
 """
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os, warnings
 import numpy as np
 import pandas as pd
@@ -23,7 +26,7 @@ warnings.filterwarnings("ignore")
 
 from helpers import load_sessions
 from config  import SEED
-from run_analysis_normalised import (
+from bandit_all import (
     WON_15, TANNER_20, CHO_20, LEE_20,
     TANNER_DAYS, COGBCI_DAYS, COGBCI_SUBS, CHO_DAYS, LEE_DAYS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,

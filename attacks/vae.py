@@ -20,6 +20,8 @@ Identical to the UCB MAB evaluation: black-box access (accept/reject + similarit
 score), attacker holds victim EEG trials, random target identity per iteration.
 """
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import math
 import numpy as np
 import torch

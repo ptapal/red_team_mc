@@ -9,6 +9,9 @@ Output:
   results_feature_comparison/feature_comparison.png
 """
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
 import numpy as np
@@ -24,7 +27,7 @@ from utils   import cosine_sim, riemann_covariance
 from arms    import AttackArms
 from ucb     import UCBSelector
 from config  import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
-from run_analysis_normalised import (
+from bandit_all import (
     WON_15, TANNER_20, TANNER_DAYS,
     COGBCI_SUBS, COGBCI_DAYS,
     CHO_20, CHO_DAYS, LEE_20, LEE_DAYS,

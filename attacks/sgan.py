@@ -21,6 +21,8 @@ FAR is measured on the real (non-differentiable) authenticator to keep
 results comparable with the UCB and VAE baselines.
 """
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import math
 import numpy as np
 import torch

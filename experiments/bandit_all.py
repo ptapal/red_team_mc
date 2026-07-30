@@ -11,6 +11,9 @@ Lee:         20 subjects subsampled from 54 (seed 42), 2 sessions (motor imagery
 Metrics reported as mean ± std across subjects.
 """
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import numpy as np
 import pandas as pd
 import os, warnings

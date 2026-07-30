@@ -1,5 +1,8 @@
 """Run analysis for resting-state datasets only (Tanner EO/EC + COG-BCI EO/EC)."""
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import numpy as np
 import pandas as pd
 import os, warnings
@@ -8,7 +11,7 @@ import matplotlib; matplotlib.use("Agg")
 warnings.filterwarnings("ignore")
 
 from helpers import load_sessions
-from run_analysis_normalised import (
+from bandit_all import (
     P_SWEEP, P_ATTACK, SEED,
     TANNER_20, COGBCI_SUBS,
     TANNER_DAYS, COGBCI_DAYS,
