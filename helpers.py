@@ -12,7 +12,8 @@ def load_trials(block_path):
     return np.stack(all_trials), df.index.tolist()
 
 def load_sessions(participants: list[str],
-                  days: list[str]) -> list[dict]:
+                  days: list[str],
+                  erp_root: str = "ERPs") -> list[dict]:
     """
     Load ERP trials grouped by participant x day.
 
@@ -21,14 +22,14 @@ def load_sessions(participants: list[str],
     sessions = []
     for participant in participants:
         for day in days:
-            erp_root = f"ERPs/{participant}/{day}"
-            if not os.path.exists(erp_root):
+            erp_root_path = f"{erp_root}/{participant}/{day}"
+            if not os.path.exists(erp_root_path):
                 continue
-            blocks = sorted([b for b in os.listdir(erp_root)
-                              if os.path.isdir(os.path.join(erp_root, b))])
+            blocks = sorted([b for b in os.listdir(erp_root_path)
+                              if os.path.isdir(os.path.join(erp_root_path, b))])
             X_sess = []
             for block in blocks:
-                trials, _ = load_trials(os.path.join(erp_root, block))
+                trials, _ = load_trials(os.path.join(erp_root_path, block))
                 X_sess.extend(trials)
             if len(X_sess) >= MIN_TRIALS_SESSION:
                 sessions.append({

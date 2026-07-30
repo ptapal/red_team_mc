@@ -1,7 +1,8 @@
 import numpy as np
 
 def riemann_covariance(features):
-    cov = np.cov(features.T)  
+    # features shape: (C, T) — spatial covariance = XX^T / (T-1), shape (C, C)
+    cov = np.cov(features)
     cov += np.eye(cov.shape[0]) * 1e-6
 
     eigvals, eigvecs = np.linalg.eigh(cov)  
