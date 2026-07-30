@@ -44,7 +44,6 @@ LAMBDA   = 0.3
 FS       = 250.0
 P_SWEEP  = list(range(2, 51, 2))
 
-# ── feature extractors ────────────────────────────────────────────────────────
 
 def riemannian_vec(trial: np.ndarray) -> np.ndarray:
     cov = riemann_covariance(trial)
@@ -75,7 +74,6 @@ FEATURE_FNS = {
     "psd":        psd_vec,
 }
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 
 def feat_array(trial_list, feat_fn):
     return np.array([feat_fn(x) for x in trial_list])
@@ -123,7 +121,6 @@ def compute_eer(templates, feat_enrol, y_enrol, rng):
             eer_val   = (frr_m + far_m) / 2
     return eer_p, eer_val
 
-# ── attack loop ───────────────────────────────────────────────────────────────
 
 def attack_loop(templates, tau, X_test, y_test, n_iter, rng, feat_fn, lam=LAMBDA):
     X_arr   = np.array(X_test)
@@ -167,7 +164,6 @@ def attack_loop(templates, tau, X_test, y_test, n_iter, rng, feat_fn, lam=LAMBDA
 
     return float(np.mean(logs)) if logs else 0.0
 
-# ── per-dataset runner ────────────────────────────────────────────────────────
 
 def run_dataset(ds_name, ds_cfg, feat_name, feat_fn):
     sessions = load_sessions(ds_cfg["participants"], ds_cfg["days"], ds_cfg["erp_root"])
@@ -238,7 +234,6 @@ def run_dataset(ds_name, ds_cfg, feat_name, feat_fn):
           f"base_FAR={result['base_FAR_p10']:.3f}  adv_FAR={result['adv_FAR_p10']:.3f}")
     return result
 
-# ── main ──────────────────────────────────────────────────────────────────────
 
 rows = []
 for ds_name, ds_cfg in DATASETS.items():
@@ -253,7 +248,6 @@ df.to_csv(os.path.join(OUT_DIR, "feature_comparison.csv"), index=False)
 print("\nSaved:", os.path.join(OUT_DIR, "feature_comparison.csv"))
 print(df.to_string(index=False))
 
-# ── plot ──────────────────────────────────────────────────────────────────────
 
 ds_order   = ["zhang", "won", "tanner_eo", "tanner_ec",
               "cogbci_eo", "cogbci_ec", "cho", "lee"]

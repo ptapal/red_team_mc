@@ -2,7 +2,7 @@
 VAE-based generative perturbation attack — all 8 datasets.
 
 Exact same experimental conditions as the UCB MAB evaluation in
-run_analysis_normalised.py:
+bandit_all.py:
   - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
   - Same reward function: r = (1-lam)*accepted + lam*max(0, 1-budget), lam=0.3
   - Same operating points: p in {5, 10, 15, 20, 25}
@@ -103,7 +103,6 @@ DATASETS = {
 }
 
 
-# ── per-dataset runner ────────────────────────────────────────────────────────
 
 def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
     """
@@ -177,7 +176,6 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
         print(f"  p={p:>2}: FAR = {mean_far:.3f} ± {std_far:.3f}   "
               f"budget = {mean_budget:.3f}")
 
-    # ── save CSV ──────────────────────────────────────────────────────────────
     rows = [dict(p=p,
                  FAR_mean=all_results[p]["mean_far"],
                  FAR_std =all_results[p]["std_far"],
@@ -185,7 +183,6 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
             for p in P_ATTACK]
     pd.DataFrame(rows).to_csv(os.path.join(out_dir, "adv_far_vae.csv"), index=False)
 
-    # ── convergence plot (p=10) ───────────────────────────────────────────────
     rf = all_results.get(10, {}).get("rolling_far", [])
     if rf:
         _plot_convergence(rf, ds_name, out_dir)
@@ -193,7 +190,6 @@ def run_vae_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
     return all_results
 
 
-# ── plots ─────────────────────────────────────────────────────────────────────
 
 def _plot_convergence(rolling_far: list, ds_name: str, out_dir: str,
                       window: int = 100) -> None:
@@ -252,7 +248,6 @@ def _plot_comparison(summary_vae: dict, summary_ucb: dict,
     print(f"Saved → {out_dir}/vae_vs_ucb_p10.png")
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print(f"Device: {DEVICE}")
@@ -272,7 +267,6 @@ if __name__ == "__main__":
 
         summary_vae[ds_name] = run_vae_dataset(sessions, cfg["out_dir"], ds_name)
 
-    # ── load UCB results from existing CSVs ───────────────────────────────────
     summary_ucb = {}
     for ds_name, cfg in UCB_DATASETS.items():
         csv_path = os.path.join(cfg["out_dir"], "adv_far_std.csv")
@@ -288,7 +282,6 @@ if __name__ == "__main__":
                     std_far  = float(row["FAR_std"]),
                 )
 
-    # ── comparison plot and CSV ───────────────────────────────────────────────
     os.makedirs("results_vae_comparison", exist_ok=True)
     if summary_vae and summary_ucb:
         _plot_comparison(summary_vae, summary_ucb, "results_vae_comparison")
@@ -310,7 +303,6 @@ if __name__ == "__main__":
     pd.DataFrame(rows).to_csv(
         "results_vae_comparison/vae_vs_ucb_full.csv", index=False)
 
-    # ── terminal summary ──────────────────────────────────────────────────────
     print("\n\n" + "=" * 72)
     print(f"{'Dataset':<20}  {'UCB p=10':>12}  {'VAE p=10':>12}  {'Δ':>7}")
     print("=" * 72)

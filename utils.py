@@ -1,21 +1,19 @@
 import numpy as np
 
 def riemann_covariance(features):
-    # features shape: (C, T) — spatial covariance = XX^T / (T-1), shape (C, C)
     cov = np.cov(features)
     cov += np.eye(cov.shape[0]) * 1e-6
 
-    eigvals, eigvecs = np.linalg.eigh(cov)  
+    eigvals, eigvecs = np.linalg.eigh(cov)
     eigvals = np.clip(eigvals, 1e-12, None)
 
-
     log_cov = eigvecs @ np.diag(np.log(eigvals)) @ eigvecs.T
-    return log_cov 
+    return log_cov
 
 def euclidean_distance(cov, mean_cov_vec, cov_inv=None):
     vec = cov[np.triu_indices_from(cov)]
     diff = vec - mean_cov_vec
-    
+
     if cov_inv is not None:
         return np.sqrt(diff.T @ cov_inv @ diff)
     else:
@@ -33,8 +31,5 @@ def trial_to_cov_vec(trial: np.ndarray) -> np.ndarray:
 def augment_cov_vec(vec: np.ndarray,
                     rng: np.random.Generator,
                     noise_std: float = 0.01) -> np.ndarray:
-    """
-    Augment a single covariance vector with small Gaussian noise, then re-normalise.
-    """
     noisy = vec + rng.normal(0, noise_std, size=vec.shape)
     return noisy / (np.linalg.norm(noisy) + 1e-9)

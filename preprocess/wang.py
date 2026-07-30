@@ -33,7 +33,6 @@ import mne
 
 mne.set_log_level("WARNING")
 
-# ── config ────────────────────────────────────────────────────────────────────
 BIDS_ROOT  = "/Users/a1234/red_team_mc/data/raw/wang/ds004148"
 OUT_EO     = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo"
 OUT_EC     = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec"
@@ -62,7 +61,6 @@ TASKS = {
     "ec": "eyesclosed",
 }
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 
 def pick_won_channels(raw):
     """Return channel picks for the 32 Won channels (case-insensitive)."""
@@ -90,7 +88,7 @@ def process_file(vhdr_path):
 
     raw.pick_channels(ch_picks)
 
-    # bandpass 1–10 Hz, zero-phase (MNE default for filter_data is linear phase FIR,
+    # bandpass 1-10 Hz, zero-phase (MNE default for filter_data is linear phase FIR,
     # which is zero-phase when applied forward-only; use method='iir' to match ERP pipeline)
     raw.filter(L_FREQ, H_FREQ, method="iir", iir_params={"order": 4, "ftype": "butter"},
                verbose=False)
@@ -99,7 +97,7 @@ def process_file(vhdr_path):
     if raw.info["sfreq"] != SFREQ_OUT:
         raw.resample(SFREQ_OUT, verbose=False)
 
-    data = raw.get_data()  # (32, n_samples) in volts — magnitude doesn't matter for covariance
+    data = raw.get_data()  # (32, n_samples) in volts; magnitude doesn't matter for covariance
     return data, ch_names_out
 
 
@@ -125,7 +123,6 @@ def segment_and_save(data, ch_names, out_dir):
     return n_wins
 
 
-# ── main loop ─────────────────────────────────────────────────────────────────
 
 def main():
     for cond, task_name in TASKS.items():

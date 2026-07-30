@@ -14,11 +14,6 @@ def load_trials(block_path):
 def load_sessions(participants: list[str],
                   days: list[str],
                   erp_root: str = "ERPs") -> list[dict]:
-    """
-    Load ERP trials grouped by participant x day.
-
-    Returns list of dicts, one per (participant, day) that exists on disk.
-    """
     sessions = []
     for participant in participants:
         for day in days:
@@ -45,18 +40,9 @@ def build_within_session_splits(sessions: list[dict],
                                 rng: np.random.Generator,
                                 enrol_frac: float = ENROL_FRAC) -> dict[str, dict]:
     """
-    For each day, split every subject's trials into enrolment / test entirely within that session (same day). No trial from one day appears in the enrolment 
-    or test set of another day.
-
-    Returns dict keyed by day string, each value:
-        {
-            "X_enrol":  list of raw EEG trials,
-            "y_enrol":  np.ndarray of int labels,
-            "X_test":   list of raw EEG trials,
-            "y_test":   np.ndarray of int labels,
-        }
+    Split each subject's trials into enrolment/test within the same day.
+    No trial from one day appears in the enrolment or test set of another day.
     """
-    # group sessions by day
     by_day: dict[str, list[dict]] = {}
     for sess in sessions:
         by_day.setdefault(sess["day"], []).append(sess)

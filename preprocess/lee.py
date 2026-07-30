@@ -39,7 +39,6 @@ import mne
 
 mne.set_log_level("WARNING")
 
-# ── config ────────────────────────────────────────────────────────────────────
 LEE_ROOT = "/Users/a1234/red_team_mc/data/raw/lee/gigadb-datasets/live/pub/10.5524/100001_101000/100542"
 OUT_DIR  = "/Users/a1234/red_team_mc/data/preprocessed/lee"
 
@@ -64,7 +63,7 @@ LEE_ALL_CH = [
     "AF7", "AF3", "AF4", "AF8", "PO3",   "PO4",
 ]
 
-# 32-channel Won subset — matches RSVP pair (C=32, D=528)
+# 32-channel Won subset ; matches RSVP pair (C=32, D=528)
 WON_CHANNELS = [
     "Fp1", "AF3", "F7",  "F3",  "FC1", "FC5", "T7",  "C3",
     "CP1", "CP5", "P7",  "P3",  "Pz",  "PO3", "O1",  "Oz",
@@ -77,7 +76,6 @@ N_SUBJECTS = 54
 MIN_TRIALS = 10
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 
 def mat_path(session, sub_idx):
     """Return path to Lee mat file. Directory names are not zero-padded."""
@@ -99,14 +97,14 @@ def load_and_process(path):
     splits = []
     for key in ("EEG_MI_train", "EEG_MI_test"):
         smt = np.array(mat[key]["smt"], dtype=np.float64)  # (4000, 100, 62)
-        # transpose → (62, 100, 4000)
+        # transpose -> (62, 100, 4000)
         splits.append(smt.transpose(2, 1, 0))
 
-    # pool → (62, 200, 4000)
+    # pool -> (62, 200, 4000)
     pooled = np.concatenate(splits, axis=1)
     n_trials = pooled.shape[1]
 
-    # concatenate trials end-to-end for single-pass filtering → (62, 200*4000)
+    # concatenate trials end-to-end for single-pass filtering -> (62, 200*4000)
     flat = pooled.reshape(N_CH, n_trials * SAMPS_IN)
 
     info = mne.create_info(ch_names=LEE_ALL_CH, sfreq=SFREQ_IN, ch_types="eeg")
@@ -121,7 +119,6 @@ def load_and_process(path):
     return data_filt.reshape(n_out, n_trials, SAMPS_OUT)
 
 
-# ── main loop ─────────────────────────────────────────────────────────────────
 
 def main():
     total_trials = 0

@@ -47,7 +47,7 @@ H_FREQ     = 30.0
 WIN_SAMPS  = 162
 MIN_WINS   = 5
 
-# CP5 absent in sub-17/25/26/28/29 → dropped globally for consistency (31 channels)
+# CP5 absent in sub-17/25/26/28/29 -> dropped globally for consistency (31 channels)
 WON_CHANNELS = [
     "Fp1", "AF3", "F7", "F3", "FC1", "FC5", "T7",  "C3",
     "CP1",        "P7", "P3", "Pz",  "PO3", "O1",  "Oz",

@@ -134,7 +134,7 @@ def run_dataset_at_lambda(sessions, lam):
 
 
 if __name__ == "__main__":
-    all_rows   = {}   # ds_name → list of dicts (one per λ)
+    all_rows   = {}   # ds_name -> list of dicts (one per lam)
     tex_rows   = []
 
     for ds_name, cfg in DATASETS.items():
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         df = pd.DataFrame(rows)
         df.to_csv(os.path.join(OUT_DIR, f"arm_means_{ds_name}.csv"), index=False)
 
-        # rank ordering per λ
+        # rank ordering per lam
         rank_rows = []
         for r in rows:
             sorted_arms = sorted(ARM_NAMES,
@@ -178,7 +178,6 @@ if __name__ == "__main__":
                 far     = r["FAR"],
             ))
 
-    # ── LaTeX table ──────────────────────────────────────────────────────────
     lines = [
         r"\begin{table}[h]",
         r"\centering",

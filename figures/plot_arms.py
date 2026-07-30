@@ -16,7 +16,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
-# ── paper arm names (Table 1 order) ──────────────────────────────────────────
 ARM_PAPER_NAMES = [
     "Gaussian\nnoise",
     "Correlated\nnoise",
@@ -28,7 +27,7 @@ ARM_PAPER_NAMES = [
     "Eigenvalue\nperturb.",
 ]
 
-# CSV column name → arm index mapping (matches config.py ARM_NAMES order)
+# CSV column name -> arm index mapping (matches config.py ARM_NAMES order)
 CSV_ARM_NAMES = [
     "Gaussian Noise",
     "Correlated Noise",

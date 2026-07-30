@@ -40,7 +40,6 @@ import mne
 
 mne.set_log_level("WARNING")
 
-# ── config ────────────────────────────────────────────────────────────────────
 MAT_DIR  = "/Users/a1234/red_team_mc/data/raw/cho/gigadb-datasets/live/pub/10.5524/100001_101000/100295/mat_data"
 OUT_DIR  = "/Users/a1234/red_team_mc/data/preprocessed/cho"
 
@@ -65,7 +64,7 @@ CHO_ALL_CH = [
     "P2",   "P4",   "P6",   "P8",   "P10",  "PO8",  "PO4",  "O2",
 ]
 
-# 32-channel Won subset — matches RSVP pair (C=32, D=528)
+# 32-channel Won subset ; matches RSVP pair (C=32, D=528)
 WON_CHANNELS = [
     "Fp1", "AF3", "F7",  "F3",  "FC1", "FC5", "T7",  "C3",
     "CP1", "CP5", "P7",  "P3",  "Pz",  "PO3", "O1",  "Oz",
@@ -77,7 +76,6 @@ SUBJECTS = [f"s{i:02d}" for i in range(1, 53)]
 MIN_TRIALS = 10
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 
 def load_and_process(mat_path):
     """
@@ -127,7 +125,6 @@ def load_and_process(mat_path):
     return pooled
 
 
-# ── main loop ─────────────────────────────────────────────────────────────────
 
 def main():
     total_trials = 0

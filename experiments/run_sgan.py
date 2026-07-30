@@ -105,7 +105,6 @@ DATASETS = {
 }
 
 
-# ── per-dataset runner ────────────────────────────────────────────────────────
 
 def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
     rng = np.random.default_rng(SEED)
@@ -124,7 +123,6 @@ def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
         rolling_far     = []
 
         for day, day_splits in sorted(by_day.items()):
-            # ── enrollment pool ───────────────────────────────────────────────
             all_enrol_X = [x for sp in day_splits for x in sp["X_enrol"]]
             all_enrol_y = [cls2idx[sp["participant"]] for sp in day_splits
                            for _ in sp["X_enrol"]]
@@ -133,7 +131,6 @@ def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
             templates = build_templates(cov_enrol, y_enrol)
             tau       = compute_tau(templates, cov_enrol, y_enrol, p)
 
-            # ── test pool ─────────────────────────────────────────────────────
             all_test_X = [x for sp in day_splits for x in sp["X_test"]]
             all_test_y = [cls2idx[sp["participant"]] for sp in day_splits
                           for _ in sp["X_test"]]
@@ -178,7 +175,6 @@ def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
         print(f"  p={p:>2}: FAR = {mean_far:.3f} ± {std_far:.3f}   "
               f"budget = {mean_budget:.3f}")
 
-    # ── save CSV ──────────────────────────────────────────────────────────────
     rows = [dict(p=p,
                  FAR_mean=all_results[p]["mean_far"],
                  FAR_std =all_results[p]["std_far"],
@@ -186,12 +182,10 @@ def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
             for p in P_ATTACK]
     pd.DataFrame(rows).to_csv(os.path.join(out_dir, "adv_far_sgan.csv"), index=False)
 
-    # ── convergence plot (p=10) ───────────────────────────────────────────────
     rf = all_results.get(10, {}).get("rolling_far", [])
     if rf:
         _plot_convergence(rf, ds_name, out_dir)
 
-    # ── defense evaluation at p=10 ────────────────────────────────────────────
     # Use the trained G from the last day's p=10 run to generate perturbed samples,
     # then evaluate D's ability to separate genuine vs. adversarial raw EEG.
     if last_G is not None and last_D is not None and last_test_X:
@@ -213,7 +207,6 @@ def run_sgan_dataset(sessions: list, out_dir: str, ds_name: str) -> dict:
     return all_results
 
 
-# ── plots ─────────────────────────────────────────────────────────────────────
 
 def _plot_convergence(rolling_far: list, ds_name: str, out_dir: str,
                       window: int = 100) -> None:
@@ -277,7 +270,6 @@ def _plot_comparison(summary_sgan: dict, summary_vae: dict,
     print(f"Saved → {out_dir}/sgan_vs_others_p10.png")
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print(f"Device: {DEVICE}")
@@ -299,7 +291,6 @@ if __name__ == "__main__":
             sessions, cfg["out_dir"], ds_name
         )
 
-    # ── load prior results for 4-way comparison ───────────────────────────────
     def _load(out_dir, fname):
         path = os.path.join(out_dir, fname)
         if not os.path.exists(path):
@@ -324,7 +315,6 @@ if __name__ == "__main__":
     _plot_comparison(summary_sgan, summary_vae, summary_gan, summary_ucb,
                      "results_sgan_comparison")
 
-    # ── terminal summary ──────────────────────────────────────────────────────
     print("\n\n" + "=" * 96)
     print(f"{'Dataset':<20}  {'UCB p=10':>12}  {'VAE p=10':>12}  "
           f"{'GAN p=10':>12}  {'SGAN p=10':>12}  ΔSGAN-UCB")

@@ -2,13 +2,12 @@
 Normalised multi-dataset comparison.
 Zhang:       15 subjects, 4 days (ERP / face-RSVP).
 Won:         15 subjects subsampled from 55 (fixed SEED), 1 day (ERP / P300-speller).
-Tanner EO:  20 subjects subsampled from 60 (seed 42), 3 sessions (resting-state, eyes open).
-Tanner EC:  20 subjects subsampled from 60 (seed 42), 3 sessions (resting-state, eyes closed).
+Wang EO:    20 subjects subsampled from 60 (seed 42), 3 sessions (resting-state, eyes open).
+Wang EC:    20 subjects subsampled from 60 (seed 42), 3 sessions (resting-state, eyes closed).
 COG-BCI EO: 20 subjects (sub-10..sub-29), 3 sessions (resting-state, eyes open).
 COG-BCI EC: 20 subjects (sub-10..sub-29), 3 sessions (resting-state, eyes closed).
 Cho:         20 subjects subsampled from 52 (seed 42), 1 session (motor imagery).
 Lee:         20 subjects subsampled from 54 (seed 42), 2 sessions (motor imagery).
-Metrics reported as mean ± std across subjects.
 """
 
 import sys as _sys, os as _os
@@ -35,7 +34,6 @@ P_ATTACK   = [5, 10, 15, 20, 25]
 N_ITER     = 1000
 
 
-# ── subsample 15 Won subjects ──────────────────────────────────────────────────
 _rng_s    = np.random.default_rng(SEED)
 WON_15    = sorted(
     _rng_s.choice([f"S{i:02d}" for i in range(1, 56)], size=15, replace=False).tolist()
@@ -45,7 +43,7 @@ TANNER_DAYS  = ["session1", "session2", "session3"]
 COGBCI_DAYS  = ["S1", "S2", "S3"]
 COGBCI_SUBS  = [f"sub-{i:02d}" for i in range(10, 30)]
 
-# Subsample 20 Tanner subjects from 60 to match COG-BCI N (seed 42)
+# 20 Wang subjects subsampled from 60 to match COG-BCI N (seed 42)
 _rng_t20 = np.random.default_rng(42)
 TANNER_20 = sorted(
     _rng_t20.choice([f"sub-{i:02d}" for i in range(1, 61)], size=20, replace=False).tolist()
@@ -118,8 +116,6 @@ DATASETS = {
 }
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
-
 def build_templates(cov_enrol, y_enrol):
     templates = {}
     for cls in np.unique(y_enrol):
@@ -137,8 +133,6 @@ def compute_tau(templates, cov_enrol, y_enrol, p):
 def cov_array(trial_list):
     return np.array([trial_to_cov_vec(x) for x in trial_list])
 
-
-# ── split sessions: per-day, per-subject ──────────────────────────────────────
 
 def make_splits(sessions, rng, enrol_frac=ENROL_FRAC):
     """
@@ -162,14 +156,12 @@ def make_splits(sessions, rng, enrol_frac=ENROL_FRAC):
 
 
 def pool_enrol(splits):
-    """Pool all subjects' enrolment for a given day → cov arrays + labels."""
+    """Pool all subjects' enrolment for a given day -> cov arrays + labels."""
     by_day = {}
     for sp in splits:
         by_day.setdefault(sp["day"], []).append(sp)
     return by_day
 
-
-# ── threshold sweep with per-subject std ──────────────────────────────────────
 
 def threshold_sweep(sessions, out_dir, ds_name):
     rng  = np.random.default_rng(SEED)
@@ -178,12 +170,9 @@ def threshold_sweep(sessions, out_dir, ds_name):
     splits  = make_splits(sessions, rng)
     by_day  = pool_enrol(splits)
 
-    # per-subject-per-day FRR and FAR at each p
-    # observation unit: (subject, day)
     p2frr, p2far = {p: [] for p in P_SWEEP}, {p: [] for p in P_SWEEP}
 
     for day, day_splits in by_day.items():
-        # Build global (day-level) templates from all enrolment data
         all_enrol_X  = [x for sp in day_splits for x in sp["X_enrol"]]
         all_enrol_y  = [cls2idx[sp["participant"]] for sp in day_splits
                         for _ in sp["X_enrol"]]
@@ -211,7 +200,6 @@ def threshold_sweep(sessions, out_dir, ds_name):
                     far = float(np.mean(np.array(imp_scores) >= tau))
                     p2far[p].append(far)
 
-    # aggregate
     results = {}
     for p in P_SWEEP:
         results[p] = dict(
@@ -219,29 +207,25 @@ def threshold_sweep(sessions, out_dir, ds_name):
             mean_far  = np.mean(p2far[p]),  std_far  = np.std(p2far[p]),
         )
 
-    # EER
     diffs   = [abs(results[p]["mean_frr"] - results[p]["mean_far"]) for p in P_SWEEP]
     eer_p   = P_SWEEP[np.argmin(diffs)]
     eer_val = (results[eer_p]["mean_frr"] + results[eer_p]["mean_far"]) / 2
 
-    # print
-    print(f"\n{ds_name} threshold sweep (mean±std across subjects)")
-    print(f"{'p':>4}  {'FRR mean±std':>18}  {'FAR mean±std':>18}")
+    print(f"\n{ds_name} threshold sweep (mean+-std across subjects)")
+    print(f"{'p':>4}  {'FRR mean+-std':>18}  {'FAR mean+-std':>18}")
     print("-" * 46)
     for p in P_SWEEP:
         r = results[p]
-        mark = "  ← EER" if p == eer_p else ("  ← ref" if p == 10 else "")
-        print(f"{p:>4}  {r['mean_frr']:.3f}±{r['std_frr']:.3f}          "
-              f"{r['mean_far']:.3f}±{r['std_far']:.3f}{mark}")
-    print(f"EER ≈ {eer_val:.3f} at p = {eer_p}")
+        mark = "  <- EER" if p == eer_p else ("  <- ref" if p == 10 else "")
+        print(f"{p:>4}  {r['mean_frr']:.3f}+-{r['std_frr']:.3f}          "
+              f"{r['mean_far']:.3f}+-{r['std_far']:.3f}{mark}")
+    print(f"EER approx {eer_val:.3f} at p = {eer_p}")
 
-    # save csv
     rows = [dict(p=p, FRR_mean=results[p]["mean_frr"], FRR_std=results[p]["std_frr"],
                  FAR_mean=results[p]["mean_far"],  FAR_std=results[p]["std_far"])
             for p in P_SWEEP]
     pd.DataFrame(rows).to_csv(os.path.join(out_dir, "threshold_sweep_std.csv"), index=False)
 
-    # plot
     ps       = P_SWEEP
     frr_m    = [results[p]["mean_frr"] for p in ps]
     far_m    = [results[p]["mean_far"]  for p in ps]
@@ -259,7 +243,7 @@ def threshold_sweep(sessions, out_dir, ds_name):
     ax.axvline(10, color="gray", ls="--", lw=1.2, label="$p=10$")
     ax.set_xlabel("Threshold percentile $p$", fontsize=13)
     ax.set_ylabel("Rate", fontsize=13)
-    ax.set_title(f"{ds_name} — FRR/FAR vs. $p$ (±1 std across subjects)", fontsize=11)
+    ax.set_title(f"{ds_name} -- FRR/FAR vs. $p$ (+-1 std across subjects)", fontsize=11)
     ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "threshold_sweep_std.png"), dpi=150)
@@ -267,8 +251,6 @@ def threshold_sweep(sessions, out_dir, ds_name):
 
     return results, eer_p, eer_val
 
-
-# ── UCB adversarial attack with per-subject std ───────────────────────────────
 
 def _attack_loop(templates, tau, X_test, y_test, n_iter, rng, lam=LAMBDA):
     """Returns logs list and per-target-class accepted-fraction dict."""
@@ -329,10 +311,9 @@ def run_ucb_attack(sessions, out_dir, ds_name):
     for p in P_ATTACK:
         day_far_vals  = []
         arm_logs_all  = {name: [] for name in ARM_NAMES}
-        per_subj_far  = []  # one value per (subject, day)
+        per_subj_far  = []
 
         for day, day_splits in sorted(by_day.items()):
-            # global templates for this day
             all_enrol_X = [x for sp in day_splits for x in sp["X_enrol"]]
             all_enrol_y = [cls2idx[sp["participant"]] for sp in day_splits
                            for _ in sp["X_enrol"]]
@@ -354,12 +335,10 @@ def run_ucb_attack(sessions, out_dir, ds_name):
             day_far = float(np.mean([l["accepted"] for l in logs]))
             day_far_vals.append(day_far)
 
-            # per-subject FAR: fraction of attempts targeting each subject's identity
             for cls_idx, accepted_list in per_tgt.items():
                 if accepted_list:
                     per_subj_far.append(float(np.mean(accepted_list)))
 
-            # per-arm FAR
             for name in ARM_NAMES:
                 arm_l = [l for l in logs if l["arm_name"] == name]
                 if arm_l:
@@ -375,18 +354,16 @@ def run_ucb_attack(sessions, out_dir, ds_name):
         )
 
         r = all_results[p]
-        print(f"\n{ds_name} p={p}: adversarial FAR = {r['mean_far']:.3f}±{r['std_far']:.3f}")
-        print(f"  {'Arm':<26}  {'FAR mean±std':>18}")
+        print(f"\n{ds_name} p={p}: adversarial FAR = {r['mean_far']:.3f}+-{r['std_far']:.3f}")
+        print(f"  {'Arm':<26}  {'FAR mean+-std':>18}")
         for name in ARM_NAMES:
             m, s = r["arm"][name]
-            print(f"  {name:<26}  {m:.3f}±{s:.3f}")
+            print(f"  {name:<26}  {m:.3f}+-{s:.3f}")
         best = max(r["arm"], key=lambda n: r["arm"][n][0])
         print(f"  Best arm: {best}")
 
-    # arm pull plot
     _plot_arms(all_results, ds_name, out_dir)
 
-    # save csv
     rows = []
     for p in P_ATTACK:
         r = all_results[p]
@@ -413,18 +390,16 @@ def _plot_arms(adv_results, ds_name, out_dir):
     ax.set_xticks(range(len(ARM_NAMES)))
     ax.set_xticklabels([ARM_NAMES[i] for i in idx], rotation=30, ha="right", fontsize=8)
     ax.set_ylabel("Adversarial FAR", fontsize=12)
-    ax.set_title(f"{ds_name} — per-arm adversarial FAR at $p=10$ (±1 std)", fontsize=11)
+    ax.set_title(f"{ds_name} -- per-arm adversarial FAR at $p=10$ (+-1 std)", fontsize=11)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "arm_far_std.png"), dpi=150)
     plt.close()
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
     print(f"Won 15 subjects (seed={SEED}): {WON_15}")
-    print(f"Tanner 20 subjects (seed=42): {TANNER_20}")
+    print(f"Wang 20 subjects (seed=42): {TANNER_20}")
     print(f"Cho 20 subjects (seed=42): {CHO_20}")
     print(f"Lee 20 subjects (seed=42): {LEE_20}\n")
 
@@ -454,12 +429,12 @@ if __name__ == "__main__":
         s = summary[ds]
         p10 = s["sweep"][10]
         print(f"\n{ds.upper()}")
-        print(f"  EER ≈ {s['eer']:.3f} at p={s['eer_p']}")
-        print(f"  p=10: FRR={p10['mean_frr']:.3f}±{p10['std_frr']:.3f}  "
-              f"FAR={p10['mean_far']:.3f}±{p10['std_far']:.3f}")
+        print(f"  EER approx {s['eer']:.3f} at p={s['eer_p']}")
+        print(f"  p=10: FRR={p10['mean_frr']:.3f}+-{p10['std_frr']:.3f}  "
+              f"FAR={p10['mean_far']:.3f}+-{p10['std_far']:.3f}")
         for p in P_ATTACK:
             r = s["adv"][p]
             best = max(r["arm"], key=lambda n: r["arm"][n][0])
-            print(f"  adv p={p:>2}: FAR={r['mean_far']:.3f}±{r['std_far']:.3f}  best={best}")
+            print(f"  adv p={p:>2}: FAR={r['mean_far']:.3f}+-{r['std_far']:.3f}  best={best}")
 
     print("\nDone.")

@@ -1,37 +1,79 @@
 # Red-Team Evaluation of an EEG Biometric Authenticator
 
-## Overview
+EEG biometric authentication via Riemannian log-covariance features, red-teamed with a UCB multi-armed bandit, a black-box VAE, and a surrogate-gradient GAN across 8 datasets and 3 EEG paradigms.
 
-This project applies a multi-armed bandit algorithm to automatically discover effective attacks against an EEG-based biometric authentication system. The idea is as follows: instead of manually testing attack methods one by one, we let a bandit algorithm figure out which ones work best.
+## Setup
 
+```bash
+pip install numpy scipy pandas matplotlib torch mne
+```
 
-## Background 
+Data goes in `data/raw/<dataset>/` and `data/preprocessed/<dataset>/`. Run preprocessing scripts first, then experiments.
 
-The target system is an EEG biometric authenticator: it identifies a person by the pattern of their brain signals. It works by projecting EEG trials onto a Riemannian manifold (via log-covariance matrices), building a per-subject template at enrolment, and then accepting/rejecting a verification attempt.
+## Structure
 
-The dataset has 15 participants recorded over 4 sessions on different days (Day 1, 7, 80, 200). All evaluation is strictly within-session: enrolment and test data come from the same day for each subject to avoid any data leakage across days.
+```
+preprocess/     preprocessing scripts per dataset
+attacks/        vae.py (black-box REINFORCE), sgan.py (surrogate-gradient minimax)
+experiments/    bandit_all.py (UCB on all 8 datasets), run_vae.py, run_sgan.py,
+                resting.py, motor_imagery.py, lambda_sweep.py, feature_ablation.py,
+                statistics.py
+figures/        threshold_sweep.py, plot_arms.py
+results/        Wilcoxon test outputs and arm FAR figures
+```
 
-There are 8 attack strategies ("arms") that perturb EEG signals in different ways: Gaussian noise, correlated noise, temporal distortion, frequency manipulation, covariance interpolation, replay with jitter, channel coupling, and eigenvalue perturbation. 
+## Datasets
 
+| Key | Dataset | Paradigm | N | Sessions |
+|-----|---------|----------|---|----------|
+| zhang | Zhang 2019 | RSVP (face) | 15 | 4 |
+| won | Won 2022 | P300-speller | 15 (of 55) | 1 |
+| tanner_eo | Wang 2022 (eyes open) | Resting-state | 20 (of 60) | 3 |
+| tanner_ec | Wang 2022 (eyes closed) | Resting-state | 20 (of 60) | 3 |
+| cogbci_eo | COG-BCI (eyes open) | Resting-state | 20 | 3 |
+| cogbci_ec | COG-BCI (eyes closed) | Resting-state | 20 | 3 |
+| cho | Cho 2017 | Motor imagery | 20 (of 52) | 1 |
+| lee | Lee 2019 | Motor imagery | 20 (of 54) | 2 |
 
-## Where do I need feedback
+## Authenticator
 
-I only need you to evaluate the UCB implementation. Everything else (aka Riemannian geometry, EEG signal processing, attack methods) is out of scope for your research field, so feel free to ignore it.
+Nearest-centroid classifier on log-covariance vectors (Riemannian manifold). Enrollment builds per-subject templates; verification uses cosine similarity against the claimed identity's template. Threshold set at the p-th percentile of genuine scores (p=10 default, EER reported).
 
+## Attack arms (UCB bandit)
 
-### The two relevant files are:
+8 perturbation strategies, selected by UCB1 with dual reward r = (1-λ)·accepted + λ·(1-budget):
 
-- `ucb.py`, the UCB1 bandit
-- `attacks.py` — where the bandit is used
+| Arm | Method |
+|-----|--------|
+| a0 | Gaussian noise |
+| a1 | Spatially correlated noise |
+| a2 | Temporal distortion (shuffle/crop/shift) |
+| a3 | Frequency band gain manipulation |
+| a4 | Covariance interpolation with impostor trial |
+| a5 | Replay with jitter |
+| a6 | Channel coupling |
+| a7 | Eigenvalue perturbation |
 
-The `_attack_loop()` function is the main loop (1000 iterations per day). Each iteration follows the standard bandit pattern:
+## Experiments
 
-1. Call `ucb.select()` → get the arm to try
-2. Sample a random victim EEG trial from the test pool
-3. Apply the selected attack to perturb the signal
-4. Submit the perturbed signal to the authenticator, claiming to be a different subject (this directly measures the False Acceptance Rate)
-5. Call `ucb.update(arm, reward)` with the binary outcome
+```bash
+# UCB bandit on all 8 datasets
+python experiments/bandit_all.py
 
-A fresh `UCBSelector` instance is created per day, each day is an independent bandit run.
+# Black-box VAE attack
+python experiments/run_vae.py
 
-The `run_redteam()` function is the outer loop that handles data loading, authenticator fitting, and calling `_attack_loop()` for each day.
+# Surrogate-gradient GAN
+python experiments/run_sgan.py
+
+# Lambda ablation
+python experiments/lambda_sweep.py
+
+# Feature space comparison (Riemannian vs Euclidean vs PSD)
+python experiments/feature_ablation.py
+
+# Wilcoxon significance tests
+python experiments/statistics.py
+```
+
+All scripts write results to `results_<dataset>/` directories.

@@ -1,23 +1,14 @@
 """
 Black-box VAE-based generative perturbation attack.
 
-Architecture
-------------
-Encoder : (C*T) -> LayerNorm -> Linear -> ELU -> Linear -> ELU -> (mu, log_var) in R^L
-Decoder : R^L   -> Linear -> ELU -> Linear -> ELU -> Linear -> (C*T) delta
-
-Training
---------
 REINFORCE with exponential moving-average baseline:
     loss = -advantage * log q(z | x) + beta_kl * KL(q || p)
 
-where advantage = reward - baseline, and reward mirrors the UCB dual objective:
+Reward mirrors the UCB dual objective:
     r = (1 - lam) * accepted + lam * max(0, 1 - ||delta||_F / ||X||_F)
 
-Threat model
-------------
-Identical to the UCB MAB evaluation: black-box access (accept/reject + similarity
-score), attacker holds victim EEG trials, random target identity per iteration.
+Threat model: black-box access (accept/reject + similarity score),
+attacker holds victim EEG trials, random target identity per iteration.
 """
 
 import sys as _sys, os as _os
@@ -29,7 +20,7 @@ import torch.nn as nn
 
 from utils import trial_to_cov_vec, cosine_sim
 
-# ── architecture hyperparameters ──────────────────────────────────────────────
+# hyperparameters
 LATENT_DIM     = 32
 HIDDEN_DIM     = 256       # used when input_dim <= 10_000
 HIDDEN_DIM_BIG = 128       # used for MI trials (input_dim > 10_000)
@@ -37,8 +28,6 @@ LR             = 3e-4
 BETA_KL        = 1e-3      # KL weight (light regularisation)
 BASELINE_ALPHA = 0.05      # EWA update coefficient for running baseline
 
-
-# ── model ─────────────────────────────────────────────────────────────────────
 
 class _Encoder(nn.Module):
     def __init__(self, input_dim: int, latent_dim: int, hidden_dim: int):
@@ -77,10 +66,9 @@ class VAEGenerator(nn.Module):
     """
     Conditioned perturbation generator.
 
-    Given a victim trial x (flattened to R^{input_dim}), encodes it to a
-    posterior q(z|x) = N(mu(x), diag(sigma^2(x))), samples z, decodes to a
-    raw perturbation direction, and scales by the RMS amplitude of x so that
-    the initial perturbation budget is ~O(1) regardless of signal magnitude.
+    Given a victim trial x, encodes to posterior q(z|x) = N(mu(x), diag(sigma^2(x))),
+    samples z, decodes to a perturbation direction, and scales by RMS amplitude of x
+    so the initial perturbation budget is ~O(1) regardless of signal magnitude.
     """
 
     def __init__(self, input_dim: int,
@@ -105,8 +93,6 @@ class VAEGenerator(nn.Module):
         return delta, mu, lv, z
 
 
-# ── training utilities ────────────────────────────────────────────────────────
-
 def _log_q(z: torch.Tensor,
            mu: torch.Tensor,
            lv: torch.Tensor) -> torch.Tensor:
@@ -120,8 +106,6 @@ def _kl(mu: torch.Tensor, lv: torch.Tensor) -> torch.Tensor:
     return -0.5 * torch.sum(1 + lv - mu.pow(2) - lv.exp())
 
 
-# ── attack loop ───────────────────────────────────────────────────────────────
-
 def run_vae_attack(templates: dict,
                    tau: float,
                    X_test: list,
@@ -132,24 +116,14 @@ def run_vae_attack(templates: dict,
                    device: str = "cpu",
                    seed: int = 42) -> tuple[list, dict]:
     """
-    Drop-in replacement for _attack_loop() in run_analysis_normalised.py.
-
-    Parameters
-    ----------
-    templates : {class_idx: template_vec}  enrolled templates
-    tau       : float                       acceptance threshold
-    X_test    : list of (C, T) arrays       test-pool raw trials
-    y_test    : (N,) int array              class labels for X_test
-    n_iter    : int                         number of training iterations
-    rng       : np.random.Generator         shared RNG (victim / target sampling)
-    lam       : float                       dual-reward trade-off (same as UCB)
-    device    : str                         torch device
-    seed      : int                         torch seed for model init & sampling
-
-    Returns
-    -------
-    logs    : list of {accepted, reward, budget}  one entry per iteration
-    per_tgt : {class_idx: [bool]}                 accepted flags by target class
+    templates : {class_idx: template_vec}
+    tau       : acceptance threshold
+    X_test    : list of (C, T) arrays
+    y_test    : (N,) int array
+    n_iter    : number of training iterations
+    rng       : shared RNG (victim/target sampling)
+    lam       : dual-reward trade-off
+    Returns logs (one entry per iteration) and per_tgt accepted flags by class.
     """
     torch.manual_seed(seed)
 
@@ -165,7 +139,6 @@ def run_vae_attack(templates: dict,
     baseline = 0.0
 
     for _ in range(n_iter):
-        # ── sample victim trial and target identity ──────────────────────────
         vi   = int(rng.integers(len(X_arr)))
         X0   = X_arr[vi]
         src  = int(y_test[vi])
@@ -176,7 +149,6 @@ def run_vae_attack(templates: dict,
         if tgt not in templates:
             continue
 
-        # ── forward pass ─────────────────────────────────────────────────────
         x_flat = torch.tensor(X0.flatten(), dtype=torch.float32,
                                device=device).unsqueeze(0)
         rms    = torch.tensor(
@@ -189,7 +161,6 @@ def run_vae_attack(templates: dict,
         delta_np = delta.squeeze(0).detach().cpu().numpy().reshape(X0.shape)
         Xp       = X0 + delta_np
 
-        # ── authenticator query (black-box) ──────────────────────────────────
         try:
             q = trial_to_cov_vec(Xp)
         except Exception:
@@ -201,7 +172,6 @@ def run_vae_attack(templates: dict,
         budget   = float(np.linalg.norm(Xp - X0) / (np.linalg.norm(X0) + 1e-9))
         reward   = (1 - lam) * float(accepted) + lam * max(0.0, 1.0 - budget)
 
-        # ── REINFORCE update ──────────────────────────────────────────────────
         advantage = reward - baseline
         baseline += BASELINE_ALPHA * (reward - baseline)
 

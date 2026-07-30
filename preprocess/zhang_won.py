@@ -28,14 +28,12 @@ import mne
 
 mne.set_log_level("ERROR")
 
-# ── paths ─────────────────────────────────────────────────────────────────────
 BIDS_ROOT          = "/Users/a1234/red_team_mc/data/raw/won/eeg_bids/Won2022_BIDS"
 WON_OUT            = "/Users/a1234/red_team_mc/data/preprocessed/won"
 ZHANG_ROOT         = "/Users/a1234/red_team_mc/data/preprocessed/zhang/full_epochs"
 ZHANG_REDUCED_OUT  = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels"
 
-# ── epoch / resample parameters ───────────────────────────────────────────────
-SFREQ_TARGET = 250          # Hz — match Zhang
+SFREQ_TARGET = 250          # Hz; match Zhang
 T_PRE        = 0.050        # 50 ms pre-stimulus
 N_SAMPLES    = 162          # must equal Zhang trial length
 # tmax computed so that after resample we get exactly N_SAMPLES:
@@ -45,7 +43,6 @@ T_POST = N_SAMPLES / SFREQ_TARGET - T_PRE   # 0.598 s
 
 MIN_TRIALS = 4
 
-# ── channel name mapping: Won (EEGLAB) → Zhang convention ────────────────────
 CHAN_MAP = {
     "FP1": "Fp1",  "AF3": "Af3",  "F7":  "F7",   "F3":  "F3",
     "FC1": "Fc1",  "FC5": "Fc5",  "T7":  "T7",   "C3":  "C3",
@@ -68,7 +65,6 @@ COMMON_CHANS = [CHAN_MAP[ch] for ch in [
 TIME_COLS = [str(i) for i in range(N_SAMPLES)]
 
 
-# ── Won processing ─────────────────────────────────────────────────────────────
 def process_won_subject(sub_dir: str, sub_label: str, out_root: str) -> int:
     sub_id = os.path.basename(sub_dir)
     set_file = os.path.join(sub_dir, "eeg",
@@ -78,7 +74,7 @@ def process_won_subject(sub_dir: str, sub_label: str, out_root: str) -> int:
 
     raw = mne.io.read_raw_eeglab(set_file, preload=True, verbose=False)
 
-    # bandpass 1–10 Hz (IIR, same band as Zhang et al.)
+    # bandpass 1-10 Hz (IIR, same band as Zhang et al.)
     raw.filter(1.0, 10.0, method="iir", verbose=False)
 
     events, _ = mne.events_from_annotations(raw, verbose=False)
@@ -97,7 +93,7 @@ def process_won_subject(sub_dir: str, sub_label: str, out_root: str) -> int:
     )
     epochs.resample(SFREQ_TARGET, verbose=False)
 
-    data = epochs.get_data() * 1e6    # convert V → µV to match Zhang units
+    data = epochs.get_data() * 1e6    # convert V -> uV to match Zhang units
     n_times = data.shape[2]
     if n_times > N_SAMPLES:
         data = data[:, :, :N_SAMPLES]
@@ -115,7 +111,6 @@ def process_won_subject(sub_dir: str, sub_label: str, out_root: str) -> int:
     return len(data)
 
 
-# ── Zhang reduction ────────────────────────────────────────────────────────────
 def reduce_zhang_subject(participant: str) -> int:
     src = os.path.join(ZHANG_ROOT, participant)
     n_saved = 0
@@ -138,7 +133,6 @@ def reduce_zhang_subject(participant: str) -> int:
     return n_saved
 
 
-# ── main ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
     print("Step 1 — Won et al. RSVP → CSV")
