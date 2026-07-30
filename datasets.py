@@ -30,30 +30,17 @@ LEE_DAYS    = ["session1", "session2"]
 
 _DATA = "/Users/a1234/red_team_mc/data/preprocessed"
 
-LABELS = {
-    "zhang":     "Zhang (RSVP)",
-    "won":       "Won (P300)",
-    "tanner_eo": "Wang-EO (resting)",
-    "tanner_ec": "Wang-EC (resting)",
-    "cogbci_eo": "COG-BCI-EO (resting)",
-    "cogbci_ec": "COG-BCI-EC (resting)",
-    "cho":       "Cho (motor imagery)",
-    "lee":       "Lee (motor imagery)",
-}
-
 _BASE = {
-    "zhang":     dict(erp_root=f"{_DATA}/zhang/won_channels", participants=[f"S{i}" for i in range(1, 16)], days=["Day_1", "Day_7", "Day_80", "Day_200"]),
-    "won":       dict(erp_root=f"{_DATA}/won",                participants=WON_15,      days=["Day_1"]),
-    "tanner_eo": dict(erp_root=f"{_DATA}/wang/eo",            participants=TANNER_20,   days=TANNER_DAYS),
-    "tanner_ec": dict(erp_root=f"{_DATA}/wang/ec",            participants=TANNER_20,   days=TANNER_DAYS),
-    "cogbci_eo": dict(erp_root=f"{_DATA}/cogbci/eo",          participants=COGBCI_SUBS, days=COGBCI_DAYS),
-    "cogbci_ec": dict(erp_root=f"{_DATA}/cogbci/ec",          participants=COGBCI_SUBS, days=COGBCI_DAYS),
-    "cho":       dict(erp_root=f"{_DATA}/cho",                participants=CHO_20,      days=CHO_DAYS),
-    "lee":       dict(erp_root=f"{_DATA}/lee",                participants=LEE_20,      days=LEE_DAYS),
+    "zhang":     dict(label="Zhang (RSVP)",        erp_root=f"{_DATA}/zhang/won_channels", participants=[f"S{i}" for i in range(1, 16)], days=["Day_1", "Day_7", "Day_80", "Day_200"]),
+    "won":       dict(label="Won (P300)",           erp_root=f"{_DATA}/won",                participants=WON_15,      days=["Day_1"]),
+    "tanner_eo": dict(label="Wang-EO (resting)",    erp_root=f"{_DATA}/wang/eo",            participants=TANNER_20,   days=TANNER_DAYS),
+    "tanner_ec": dict(label="Wang-EC (resting)",    erp_root=f"{_DATA}/wang/ec",            participants=TANNER_20,   days=TANNER_DAYS),
+    "cogbci_eo": dict(label="COG-BCI-EO (resting)", erp_root=f"{_DATA}/cogbci/eo",          participants=COGBCI_SUBS, days=COGBCI_DAYS),
+    "cogbci_ec": dict(label="COG-BCI-EC (resting)", erp_root=f"{_DATA}/cogbci/ec",          participants=COGBCI_SUBS, days=COGBCI_DAYS),
+    "cho":       dict(label="Cho (motor imagery)",  erp_root=f"{_DATA}/cho",                participants=CHO_20,      days=CHO_DAYS),
+    "lee":       dict(label="Lee (motor imagery)",  erp_root=f"{_DATA}/lee",                participants=LEE_20,      days=LEE_DAYS),
 }
 
 
 def get_datasets(prefix="results"):
-    """Return dataset dicts with out_dir=prefix_key and label from LABELS."""
-    return {k: {**v, "out_dir": f"{prefix}_{k}", "label": LABELS[k]}
-            for k, v in _BASE.items()}
+    return {k: {**v, "out_dir": f"{prefix}_{k}"} for k, v in _BASE.items()}
