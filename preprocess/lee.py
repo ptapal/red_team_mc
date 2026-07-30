@@ -1,32 +1,10 @@
 """
-Preprocess Lee et al. 2019 motor imagery EEG into the same CSV format
-used by load_sessions() in helpers.py.
+Preprocess Lee et al. 2019 motor imagery EEG into the same CSV format used by load_sessions() in helpers.py.
 
 Output directory:
   ERPs_lee/
 
-Structure:
-  {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
-
-Each CSV: rows = 32 EEG channels (Won set), columns = 1000 timepoints (4 s at 250 Hz),
-index = channel names.
-
-Channel selection: restricted to the 32-electrode Won subset to match the RSVP pair
-(C=32, D=528). All 32 Won channels are present in Lee's 62-channel layout.
-
-Lee provides two sessions per subject (session1, session2), each split into
-train (100 trials) and test (100 trials) runs. Both runs are pooled, giving
-200 trials per session (100 left + 100 right, pooled for biometric use).
-
-Data is pre-epoched in the mat file as smt: (4000 samples, 100 trials, 62 ch).
-All 62 channels are EEG (EMG stored separately in the mat file).
-
-Preprocessing:
-  - Pool train + test smt arrays → (62, 200, 4000) per session
-  - Concatenate all 200 trials end-to-end for single-pass filtering
-  - Bandpass 1-30 Hz (zero-phase IIR, 4th-order Butterworth via MNE)
-  - Resample 1000 → 250 Hz → 1000 samples per trial
-  - Save each trial as a CSV
+Structure: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
 """
 
 import sys as _sys, os as _os
@@ -47,7 +25,7 @@ SFREQ_OUT = 250
 L_FREQ    = 1.0
 H_FREQ    = 30.0
 
-N_CH      = 62       # total Lee EEG channels (used to build RawArray)
+N_CH      = 62      # total Lee EEG channels (used to build RawArray)
 SAMPS_IN  = 4000    # samples per trial at 1000 Hz (4 s)
 SAMPS_OUT = 1000    # samples per trial at 250 Hz  (4 s)
 

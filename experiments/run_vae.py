@@ -3,21 +3,10 @@ VAE-based generative perturbation attack — all 8 datasets.
 
 Exact same experimental conditions as the UCB MAB evaluation in
 bandit_all.py:
-  - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
-  - Same reward function: r = (1-lam)*accepted + lam*max(0, 1-budget), lam=0.3
-  - Same operating points: p in {5, 10, 15, 20, 25}
-  - Same T=1000 iterations per (day, p) combination
-
-Output per dataset
-------------------
-  results_vae_{ds}/adv_far_vae.csv      — FAR mean±std + mean budget, same format
-                                           as adv_far_std.csv for direct comparison
-  results_vae_{ds}/convergence_p10.png  — rolling FAR (window=100) vs. iteration
-
-Comparison output
------------------
-  results_vae_comparison/vae_vs_ucb_p10.png  — side-by-side bar chart
-  results_vae_comparison/vae_vs_ucb_full.csv — all datasets, all p values
+    - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
+    - Same reward function: r = (1-lam)*accepted + lam*max(0, 1-budget), lam=0.3
+    - Same operating points: p in {5, 10, 15, 20, 25}
+    - Same T=1000 iterations per (day, p) combination
 """
 
 import sys as _sys, os as _os
@@ -38,9 +27,8 @@ warnings.filterwarnings("ignore")
 from helpers  import load_sessions
 from config   import SEED
 from utils    import trial_to_cov_vec, cosine_sim
+from datasets import get_datasets
 from bandit_all import (
-    WON_15, TANNER_20, CHO_20, LEE_20,
-    TANNER_DAYS, COGBCI_DAYS, COGBCI_SUBS, CHO_DAYS, LEE_DAYS,
     DATASETS as UCB_DATASETS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     P_ATTACK,
@@ -51,56 +39,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LAMBDA = 0.3
 N_ITER = 1000
 
-DATASETS = {
-    "zhang": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels",
-        participants = [f"S{i}" for i in range(1, 16)],
-        days         = ["Day_1", "Day_7", "Day_80", "Day_200"],
-        out_dir      = "results_vae_zhang",
-    ),
-    "won": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/won",
-        participants = WON_15,
-        days         = ["Day_1"],
-        out_dir      = "results_vae_won",
-    ),
-    "tanner_eo": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo",
-        participants = TANNER_20,
-        days         = TANNER_DAYS,
-        out_dir      = "results_vae_tanner_eo",
-    ),
-    "tanner_ec": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec",
-        participants = TANNER_20,
-        days         = TANNER_DAYS,
-        out_dir      = "results_vae_tanner_ec",
-    ),
-    "cogbci_eo": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo",
-        participants = COGBCI_SUBS,
-        days         = COGBCI_DAYS,
-        out_dir      = "results_vae_cogbci_eo",
-    ),
-    "cogbci_ec": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec",
-        participants = COGBCI_SUBS,
-        days         = COGBCI_DAYS,
-        out_dir      = "results_vae_cogbci_ec",
-    ),
-    "cho": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cho",
-        participants = CHO_20,
-        days         = CHO_DAYS,
-        out_dir      = "results_vae_cho",
-    ),
-    "lee": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/lee",
-        participants = LEE_20,
-        days         = LEE_DAYS,
-        out_dir      = "results_vae_lee",
-    ),
-}
+DATASETS = get_datasets("results_vae")
 
 
 

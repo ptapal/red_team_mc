@@ -1,33 +1,10 @@
 """
-Preprocess Cho et al. 2017 motor imagery EEG into the same CSV format
-used by load_sessions() in helpers.py.
+Preprocess Cho et al. 2017 motor imagery EEG into the same CSV format used by load_sessions() in helpers.py.
 
 Output directory:
-  ERPs_cho/
+    ERPs_cho/
 
-Structure mirrors existing datasets:
-  {out_dir}/{sub_id}/session1/block/trial_{NNN:03d}.csv
-
-Each CSV: rows = 32 EEG channels (Won set), columns = 1000 timepoints (4 s at 250 Hz),
-index = channel names.
-
-Channel selection: restricted to the 32-electrode Won subset to match the RSVP pair
-(Zhang/Won use C=32, D=528). All 32 Won channels are present in Cho's 64-channel layout.
-
-Cho provides one session per subject, 100 left-hand and 100 right-hand
-motor imagery trials. Both classes are pooled (identity label only —
-class is irrelevant for biometric verification). This gives 200 trials
-per subject.
-
-Preprocessing:
-  - Load .mat (scipy.io), extract imagery_left / imagery_right
-  - Keep first 64 channels (EEG); drop channels 65-68 (EMG)
-  - Reshape concatenated data into (n_ch, n_trials, samples_per_trial)
-  - Extract imagery window: 0 to +4 s post-cue = 2048 samples at 512 Hz
-  - Bandpass 1-30 Hz (zero-phase IIR, 4th-order Butterworth via MNE)
-  - Resample 512 → 250 Hz → 1000 samples per trial
-  - No baseline correction (no pre-stimulus period in motor imagery)
-  - Save each trial as a CSV
+Structure mirrors existing datasets: {out_dir}/{sub_id}/session1/block/trial_{NNN:03d}.csv
 """
 
 import sys as _sys, os as _os

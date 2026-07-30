@@ -24,16 +24,9 @@ results/        Wilcoxon test outputs and arm FAR figures
 
 ## Datasets
 
-| Key | Dataset | Paradigm | N | Sessions |
-|-----|---------|----------|---|----------|
-| zhang | Zhang 2019 | RSVP (face) | 15 | 4 |
-| won | Won 2022 | P300-speller | 15 (of 55) | 1 |
-| tanner_eo | Wang 2022 (eyes open) | Resting-state | 20 (of 60) | 3 |
-| tanner_ec | Wang 2022 (eyes closed) | Resting-state | 20 (of 60) | 3 |
-| cogbci_eo | COG-BCI (eyes open) | Resting-state | 20 | 3 |
-| cogbci_ec | COG-BCI (eyes closed) | Resting-state | 20 | 3 |
-| cho | Cho 2017 | Motor imagery | 20 (of 52) | 1 |
-| lee | Lee 2019 | Motor imagery | 20 (of 54) | 2 |
+(i) zhang (RSVP), won (P300-speller)
+(ii) resting state, eo & ec: tanner, cogbci
+(iii) motor imagery: cho, lee
 
 ## Authenticator
 
@@ -41,11 +34,11 @@ Nearest-centroid classifier on log-covariance vectors (Riemannian manifold). Enr
 
 ## Attack arms (UCB bandit)
 
-8 perturbation strategies, selected by UCB1 with dual reward r = (1-λ)·accepted + λ·(1-budget):
+8 perturbation strategies, selected by UCB1 with dual reward r = (1-$\lambda$)·accepted + $\lambda$ x (1-budget):
 
 | Arm | Method |
 |-----|--------|
-| a0 | Gaussian noise |
+| a_0 | Gaussian noise |
 | a1 | Spatially correlated noise |
 | a2 | Temporal distortion (shuffle/crop/shift) |
 | a3 | Frequency band gain manipulation |

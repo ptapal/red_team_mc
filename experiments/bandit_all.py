@@ -26,6 +26,11 @@ from utils import trial_to_cov_vec, cosine_sim
 from arms import AttackArms
 from ucb import UCBSelector
 from config import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
+from datasets import (
+    WON_15, TANNER_20, CHO_20, LEE_20,
+    TANNER_DAYS, COGBCI_DAYS, COGBCI_SUBS, CHO_DAYS, LEE_DAYS,
+    get_datasets,
+)
 
 ENROL_FRAC = 0.5
 LAMBDA     = 0.3
@@ -33,87 +38,7 @@ P_SWEEP    = list(range(2, 51, 2))
 P_ATTACK   = [5, 10, 15, 20, 25]
 N_ITER     = 1000
 
-
-_rng_s    = np.random.default_rng(SEED)
-WON_15    = sorted(
-    _rng_s.choice([f"S{i:02d}" for i in range(1, 56)], size=15, replace=False).tolist()
-)
-
-TANNER_DAYS  = ["session1", "session2", "session3"]
-COGBCI_DAYS  = ["S1", "S2", "S3"]
-COGBCI_SUBS  = [f"sub-{i:02d}" for i in range(10, 30)]
-
-# 20 Wang subjects subsampled from 60 to match COG-BCI N (seed 42)
-_rng_t20 = np.random.default_rng(42)
-TANNER_20 = sorted(
-    _rng_t20.choice([f"sub-{i:02d}" for i in range(1, 61)], size=20, replace=False).tolist()
-)
-
-# Subsample 20 Cho subjects from 52 (seed 42)
-_rng_cho = np.random.default_rng(42)
-CHO_20 = sorted(
-    _rng_cho.choice([f"s{i:02d}" for i in range(1, 53)], size=20, replace=False).tolist()
-)
-
-# Subsample 20 Lee subjects from 54 (seed 42)
-_rng_lee = np.random.default_rng(42)
-LEE_20 = sorted(
-    _rng_lee.choice([f"sub-{i:02d}" for i in range(1, 55)], size=20, replace=False).tolist()
-)
-
-CHO_DAYS = ["session1"]
-LEE_DAYS = ["session1", "session2"]
-
-DATASETS = {
-    "zhang": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels",
-        participants= [f"S{i}" for i in range(1, 16)],
-        days        = ["Day_1", "Day_7", "Day_80", "Day_200"],
-        out_dir     = "results_zhang",
-    ),
-    "won": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/won",
-        participants= WON_15,
-        days        = ["Day_1"],
-        out_dir     = "results_won",
-    ),
-    "tanner_eo": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo",
-        participants= TANNER_20,
-        days        = TANNER_DAYS,
-        out_dir     = "results_tanner_eo",
-    ),
-    "tanner_ec": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec",
-        participants= TANNER_20,
-        days        = TANNER_DAYS,
-        out_dir     = "results_tanner_ec",
-    ),
-    "cogbci_eo": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo",
-        participants= COGBCI_SUBS,
-        days        = COGBCI_DAYS,
-        out_dir     = "results_cogbci_eo",
-    ),
-    "cogbci_ec": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec",
-        participants= COGBCI_SUBS,
-        days        = COGBCI_DAYS,
-        out_dir     = "results_cogbci_ec",
-    ),
-    "cho": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cho",
-        participants= CHO_20,
-        days        = CHO_DAYS,
-        out_dir     = "results_cho",
-    ),
-    "lee": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/lee",
-        participants= LEE_20,
-        days        = LEE_DAYS,
-        out_dir     = "results_lee",
-    ),
-}
+DATASETS = get_datasets("results")
 
 
 def build_templates(cov_enrol, y_enrol):
@@ -423,7 +348,7 @@ if __name__ == "__main__":
     print("SUMMARY")
     print("="*64)
 
-    for ds in ["zhang", "won", "tanner_eo", "tanner_ec", "cogbci_eo", "cogbci_ec", "cho", "lee"]:
+    for ds in DATASETS:
         if ds not in summary:
             continue
         s = summary[ds]

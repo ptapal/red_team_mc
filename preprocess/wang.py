@@ -1,27 +1,11 @@
 """
-Preprocess Tanner et al. 2022 resting-state EEG (BIDS, ds004148) into
-the same CSV format used by load_sessions() in helpers.py.
+Preprocess Tanner et al. 2022 resting-state EEG (BIDS, ds004148) into the same CSV format used by load_sessions() in helpers.py.
 
 Output directories:
-  ERPs_tanner_eo/  — eyes-open condition
-  ERPs_tanner_ec/  — eyes-closed condition
+    ERPs_tanner_eo/  — eyes-open condition
+    ERPs_tanner_ec/  — eyes-closed condition
 
-Structure mirrors existing ERPs_zhang_reduced / ERPs_won:
-  {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
-
-Each CSV: rows = channels (31), columns = timepoints (162), index = channel names.
-
-CP5 is excluded to match COG-BCI, where it is absent in 5 of 20 subjects.
-Using the intersection channel set (31 channels, C=31, D=31×32/2=496) for
-both resting-state datasets keeps the feature space identical across the pair.
-
-Preprocessing to match ERP pipeline:
-  - BrainVision .vhdr → MNE RawBrainVision
-  - Pick 31 channels (Won set minus CP5, case-insensitive)
-  - Bandpass 1–30 Hz (zero-phase IIR; covers alpha 8–13 Hz and beta 13–30 Hz)
-  - Resample 500 → 250 Hz
-  - Segment into non-overlapping 162-sample (648 ms) windows
-  - No baseline correction (no pre-stimulus period in resting state)
+Structure mirrors existing ERPs_zhang_reduced / ERPs_won: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
 """
 
 import sys as _sys, os as _os
@@ -60,7 +44,6 @@ TASKS = {
     "eo": "eyesopen",
     "ec": "eyesclosed",
 }
-
 
 def pick_won_channels(raw):
     """Return channel picks for the 32 Won channels (case-insensitive)."""
@@ -130,7 +113,7 @@ def main():
         total_wins = 0
         skipped    = 0
 
-        print(f"\n=== Condition: {cond} ({task_name}) → {out_root} ===")
+        print(f"\n=== Condition: {cond} ({task_name}) -> {out_root} ===")
 
         for sub in SUBJECTS:
             for ses in SESSIONS:

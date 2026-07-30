@@ -1,31 +1,14 @@
 """
-Preprocess COG-BCI resting-state EEG (Hinss et al. 2023) into the same
-CSV format used by load_sessions() in helpers.py.
-
-We use the session-opening resting-state block only (RS_Beg_EO / RS_Beg_EC),
-one minute each, yielding ~92 trials per condition per session.
+Preprocess COG-BCI resting-state EEG (Hinss et al. 2023) into the same CSV format used by load_sessions() in helpers.py.
 
 Participants 1–9 are excluded: electrode Cz was not recorded for them.
-Remaining: sub-10 through sub-29 → 20 complete participants.
 
-Channel note: CP5 is absent in sub-17, sub-25, sub-26, sub-28, sub-29.
-CP5 is therefore dropped globally so all 20 subjects use the same 31-channel
-set (C=31, feature dim D=31×32/2=496).
-
+Channel note: CP5 is absent in sub-17, sub-25, sub-26, sub-28, sub-29. CP5 is therefore dropped globally.
 Output directories:
-  ERPs_cogbci_eo/  — eyes-open condition
-  ERPs_cogbci_ec/  — eyes-closed condition
+    ERPs_cogbci_eo/  — eyes-open condition
+    ERPs_cogbci_ec/  — eyes-closed condition
 
-Structure mirrors existing ERPs dirs:
-  {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
-
-Preprocessing:
-  - EEGLAB .set → MNE RawEEGLAB
-  - Drop ECG1 channel
-  - Pick 31 channels (Won set minus CP5)
-  - Bandpass 1–30 Hz (IIR zero-phase; covers alpha 8–13 Hz and beta 13–30 Hz)
-  - Resample 500 → 250 Hz
-  - Non-overlapping 162-sample (648 ms) windows, no baseline correction
+Structure mirrors existing ERPs dirs: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
 """
 
 import sys as _sys, os as _os
@@ -116,7 +99,7 @@ def main():
         total_wins = 0
         skipped    = 0
 
-        print(f"\n=== Condition: {cond} ({task_file}) → {out_root} ===")
+        print(f"\n=== Condition: {cond} ({task_file}) -> {out_root} ===")
 
         for sub in SUBJECTS:
             for ses in SESSIONS:

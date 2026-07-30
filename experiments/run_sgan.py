@@ -1,24 +1,14 @@
 """
 Surrogate-gradient GAN attack — all 8 datasets.
 
-True minimax: G and D fight via backprop.  S is a frozen surrogate trained
-on enrollment data that makes the Riemannian authenticator differentiable.
+True minimax: G and D fight via backprop.  
+S is a frozen surrogate trained on enrollment data.
 
 Conditions shared with UCB / VAE / pseudo-GAN evaluations:
-  - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
-  - Same dual-reward weight λ=0.3 (authenticator/budget tradeoff in G's loss)
-  - Same T=1000 iterations per (day, p) combination
-  - FAR measured on the real Riemannian authenticator (not S)
-
-Output per dataset
-------------------
-  results_sgan_{ds}/adv_far_sgan.csv    — FAR mean±std + mean budget
-  results_sgan_{ds}/convergence_p10.png — rolling FAR vs. iteration
-  results_sgan_{ds}/defense_p10.csv     — D detection metrics at p=10
-
-Comparison output
------------------
-  results_sgan_comparison/sgan_vs_others_p10.png  — 4-way bar: UCB/VAE/GAN/SGAN
+    - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
+    - Same dual-reward weight λ=0.3 (authenticator/budget tradeoff in G's loss)
+    - Same T=1000 iterations per (day, p) combination
+    - FAR measured on the real Riemannian authenticator (not S)
 """
 
 import sys as _sys, os as _os
@@ -37,9 +27,8 @@ warnings.filterwarnings("ignore")
 
 from helpers  import load_sessions
 from config   import SEED
+from datasets import get_datasets
 from bandit_all import (
-    WON_15, TANNER_20, CHO_20, LEE_20,
-    TANNER_DAYS, COGBCI_DAYS, COGBCI_SUBS, CHO_DAYS, LEE_DAYS,
     DATASETS as UCB_DATASETS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     P_ATTACK,
@@ -53,56 +42,7 @@ LAMBDA = 0.3
 N_ITER = 1000
 N_DEFENSE_EVAL = 200   # raw trials scored by D for defense metrics
 
-DATASETS = {
-    "zhang": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels",
-        participants = [f"S{i}" for i in range(1, 16)],
-        days         = ["Day_1", "Day_7", "Day_80", "Day_200"],
-        out_dir      = "results_sgan_zhang",
-    ),
-    "won": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/won",
-        participants = WON_15,
-        days         = ["Day_1"],
-        out_dir      = "results_sgan_won",
-    ),
-    "tanner_eo": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo",
-        participants = TANNER_20,
-        days         = TANNER_DAYS,
-        out_dir      = "results_sgan_tanner_eo",
-    ),
-    "tanner_ec": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec",
-        participants = TANNER_20,
-        days         = TANNER_DAYS,
-        out_dir      = "results_sgan_tanner_ec",
-    ),
-    "cogbci_eo": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo",
-        participants = COGBCI_SUBS,
-        days         = COGBCI_DAYS,
-        out_dir      = "results_sgan_cogbci_eo",
-    ),
-    "cogbci_ec": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec",
-        participants = COGBCI_SUBS,
-        days         = COGBCI_DAYS,
-        out_dir      = "results_sgan_cogbci_ec",
-    ),
-    "cho": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/cho",
-        participants = CHO_20,
-        days         = CHO_DAYS,
-        out_dir      = "results_sgan_cho",
-    ),
-    "lee": dict(
-        erp_root     = "/Users/a1234/red_team_mc/data/preprocessed/lee",
-        participants = LEE_20,
-        days         = LEE_DAYS,
-        out_dir      = "results_sgan_lee",
-    ),
-}
+DATASETS = get_datasets("results_sgan")
 
 
 
@@ -267,7 +207,7 @@ def _plot_comparison(summary_sgan: dict, summary_vae: dict,
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "sgan_vs_others_p10.png"), dpi=150)
     plt.close()
-    print(f"Saved → {out_dir}/sgan_vs_others_p10.png")
+    print(f"Saved -> {out_dir}/sgan_vs_others_p10.png")
 
 
 

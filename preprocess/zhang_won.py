@@ -1,22 +1,9 @@
 """
 Won et al. (2022) RSVP preprocessing pipeline.
 
-Steps per subject:
-  1. Load EEGLAB .set file (512 Hz, 32 ch)
-  2. Bandpass filter 1–10 Hz  (matches Zhang et al. preprocessing)
-  3. Epoch around target events (event_id=1) at -50ms to +598ms
-  4. Baseline-correct [-50ms, 0ms]
-  5. Resample 512 → 250 Hz  → exactly 162 samples  (matches Zhang)
-  6. Rename channels to Zhang naming convention
-  7. Save one CSV per trial:  rows=channels, cols=time  (identical format to Zhang)
-
-Also re-saves Zhang data restricted to the same 32-channel subset so both
-datasets are directly comparable.
-
-Outputs
--------
-ERPs_won/S{sub_num}/Day_1/block_1/trial_{n}.csv   — Won trials
-ERPs_zhang_reduced/{participant}/{day}/{block}/trial_N.csv — Zhang 32-ch
+Outputs:
+    ERPs_won/S{sub_num}/Day_1/block_1/trial_{n}.csv   — Won trials
+    ERPs_zhang_reduced/{participant}/{day}/{block}/trial_N.csv — Zhang 32-ch
 """
 
 import sys as _sys, os as _os
@@ -135,7 +122,7 @@ def reduce_zhang_subject(participant: str) -> int:
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Step 1 — Won et al. RSVP → CSV")
+    print("Step 1 — Won et al. RSVP -> CSV")
     print("=" * 60)
     won_total = 0
     won_subs  = 0
@@ -149,14 +136,14 @@ if __name__ == "__main__":
             os.path.join(BIDS_ROOT, sub_id), sub_label, WON_OUT
         )
         if n > 0:
-            print(f"  {sub_id} → {sub_label}: {n} trials")
+            print(f"  {sub_id} -> {sub_label}: {n} trials")
             won_total += n
             won_subs  += 1
     print(f"\nWon: {won_subs} subjects, {won_total} total trials saved")
 
     print()
     print("=" * 60)
-    print("Step 2 — Zhang 57-ch → 32-ch subset")
+    print("Step 2 — Zhang 57-ch -> 32-ch subset")
     print("=" * 60)
     zhang_subs = sorted(
         p for p in os.listdir(ZHANG_ROOT)
@@ -167,5 +154,5 @@ if __name__ == "__main__":
         print(f"  {participant}: {n} trials re-saved")
 
     print("\nDone.")
-    print(f"  Won output     → {WON_OUT}")
-    print(f"  Zhang (32-ch)  → {ZHANG_REDUCED_OUT}")
+    print(f"  Won output     -> {WON_OUT}")
+    print(f"  Zhang (32-ch)  -> {ZHANG_REDUCED_OUT}")

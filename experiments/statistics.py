@@ -1,17 +1,9 @@
 """
 Wilcoxon / Mann-Whitney U test: best vs. worst UCB arm per dataset at p=10.
 
-Re-runs the UCB attack loop at p=10 for all 8 datasets (no neural networks,
-fast) to recover per-iteration reward sequences.  Then tests whether the best
-and worst arm produce statistically different reward distributions using the
-one-sided Mann-Whitney U test (equivalent to Wilcoxon rank-sum; more
-appropriate than signed-rank because the two arm reward sequences have
-unequal length).
-
-Outputs
--------
-wilcoxon_results.csv   — per-dataset U statistic, p-value, arm names
-wilcoxon_table.tex     — LaTeX table ready to paste
+Re-runs the UCB attack loop at p=10 for all 8 datasets.
+Tests whether the best and worst arm produce statistically different reward
+distributions using the one-sided Mann-Whitney U test.
 """
 
 import sys as _sys, os as _os
@@ -26,76 +18,14 @@ warnings.filterwarnings("ignore")
 
 from helpers import load_sessions
 from config  import SEED
+from datasets import get_datasets
 from bandit_all import (
-    WON_15, TANNER_20, CHO_20, LEE_20,
-    TANNER_DAYS, COGBCI_DAYS, COGBCI_SUBS, CHO_DAYS, LEE_DAYS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     _attack_loop, ARM_NAMES, LAMBDA,
 )
 
 P_TEST = 10
-
-DATASETS = {
-    "zhang": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels",
-        participants= [f"S{i}" for i in range(1, 16)],
-        days        = ["Day_1", "Day_7", "Day_80", "Day_200"],
-        label       = "Zhang (RSVP)",
-    ),
-    "won": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/won",
-        participants= WON_15,
-        days        = ["Day_1"],
-        label       = "Won (RSVP)",
-    ),
-    "tanner_eo": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo",
-        participants= TANNER_20,
-        days        = TANNER_DAYS,
-        label       = "Wang-EO (resting)",
-    ),
-    "tanner_ec": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec",
-        participants= TANNER_20,
-        days        = TANNER_DAYS,
-        label       = "Wang-EC (resting)",
-    ),
-    "cogbci_eo": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo",
-        participants= COGBCI_SUBS,
-        days        = COGBCI_DAYS,
-        label       = "COG-BCI-EO (resting)",
-    ),
-    "cogbci_ec": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec",
-        participants= COGBCI_SUBS,
-        days        = COGBCI_DAYS,
-        label       = "COG-BCI-EC (resting)",
-    ),
-    "cho": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cho",
-        participants= CHO_20,
-        days        = CHO_DAYS,
-        label       = "Cho (motor imagery)",
-    ),
-    "lee": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/lee",
-        participants= LEE_20,
-        days        = LEE_DAYS,
-        label       = "Lee (motor imagery)",
-    ),
-}
-
-SHORT_NAMES = {
-    "Gaussian Noise":     "Gauss.\ noise",
-    "Correlated Noise":   "Corr.\ noise",
-    "Temporal Distortion":"Temporal dist.",
-    "Freq Manipulation":  "Freq.\ manip.",
-    "Cov Interpolation":  "Cov.\ interp.",
-    "Replay + Jitter":    "Replay+jitter",
-    "Channel Coupling":   "Chan.\ coupling",
-    "Eigenvalue Perturb": "Eigenval.\ pert.",
-}
+DATASETS = get_datasets("results")
 
 
 def run_dataset(sessions, ds_name):
@@ -137,12 +67,12 @@ def run_dataset(sessions, ds_name):
         return dict(ds=ds_name, best_arm=best_arm, worst_arm=worst_arm,
                     best_mean=arm_means[best_arm], worst_mean=arm_means[worst_arm],
                     U=float("nan"), p_value=float("nan"),
-                    n_best=len(rb), n_worst=len(rw), sig="—")
+                    n_best=len(rb), n_worst=len(rw), sig="n/a")
 
     U, pval = stats.mannwhitneyu(rb, rw, alternative="greater")
-    sig = ("$p<0.001$" if pval < 0.001 else
-           f"$p={pval:.3f}$" if pval < 0.05 else
-           f"$p={pval:.3f}$\,(n.s.)")
+    sig = ("p<0.001" if pval < 0.001 else
+           f"p={pval:.3f}" if pval < 0.05 else
+           f"p={pval:.3f} (n.s.)")
     return dict(ds=ds_name, best_arm=best_arm, worst_arm=worst_arm,
                 best_mean=arm_means[best_arm], worst_mean=arm_means[worst_arm],
                 U=float(U), p_value=float(pval),
@@ -156,7 +86,7 @@ if __name__ == "__main__":
         sessions = load_sessions(cfg["participants"], cfg["days"],
                                  erp_root=cfg["erp_root"])
         if not sessions:
-            print("  No sessions — skipping.")
+            print("  No sessions -- skipping.")
             continue
         print(f"  {len(sessions)} sessions, "
               f"{len({s['participant'] for s in sessions})} subjects")
@@ -172,46 +102,3 @@ if __name__ == "__main__":
     df = pd.DataFrame(rows)
     df.to_csv("wilcoxon_results.csv", index=False)
     print("\nSaved wilcoxon_results.csv")
-
-    # LaTeX table
-    lines = [
-        r"\begin{table}[h]",
-        r"\centering",
-        r"\caption{Mann-Whitney U test comparing best vs.\ worst UCB arm at $p=10$.",
-        r"$H_0$: reward distributions of best and worst arm are identical.",
-        r"$n_b$/$n_w$: number of pulls for best/worst arm (pooled across days).}",
-        r"\label{tab:wilcoxon}",
-        r"\begin{tabular}{lllrrr}",
-        r"\toprule",
-        r"Dataset & Best arm & Worst arm & $\bar{r}_b$ & $\bar{r}_w$ & Test \\",
-        r"\midrule",
-    ]
-    paradigm_groups = [
-        (["zhang","won"],             "RSVP"),
-        (["tanner_eo","tanner_ec",
-          "cogbci_eo","cogbci_ec"],   "Resting-state"),
-        (["cho","lee"],               "Motor imagery"),
-    ]
-    for ds_keys, group in paradigm_groups:
-        group_rows = [r for r in rows if r["ds"] in ds_keys]
-        if group_rows:
-            lines.append(r"\addlinespace[3pt]")
-            lines.append(r"\multicolumn{6}{l}{\textit{" + group + r"}} \\")
-        for r in group_rows:
-            b = SHORT_NAMES.get(r["best_arm"],  r["best_arm"])
-            w = SHORT_NAMES.get(r["worst_arm"], r["worst_arm"])
-            lines.append(
-                f"{r['label']} & {b} & {w} & "
-                f"{r['best_mean']:.3f} & {r['worst_mean']:.3f} & {r['sig']} \\\\"
-            )
-    lines += [
-        r"\bottomrule",
-        r"\end{tabular}",
-        r"\end{table}",
-    ]
-    tex = "\n".join(lines)
-    with open("wilcoxon_table.tex", "w") as f:
-        f.write(tex)
-    print("Saved wilcoxon_table.tex")
-    print("\n--- LaTeX table ---")
-    print(tex)
