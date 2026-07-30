@@ -25,7 +25,7 @@ from ucb     import UCBSelector
 from config  import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
 from bandit_all import make_splits, pool_enrol, DATASETS
 
-OUT_DIR  = "results_feature_comparison"
+OUT_DIR  = "results/feature_comparison"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 P        = 10
@@ -80,35 +80,41 @@ def compute_tau(templates, feat_enrol, y_enrol, p):
                for c in np.unique(y_enrol) for v in feat_enrol[y_enrol == c]]
     return float(np.percentile(genuine, p))
 
-def compute_eer(templates, feat_enrol, y_enrol, rng):
-    """Sweep p to find EER."""
-    best_diff, eer_p, eer_val = 1e9, 2, 0.5
-    for p in P_SWEEP:
-        tau = compute_tau(templates, feat_enrol, y_enrol, p)
-        classes = list(templates.keys())
-        frrs, fars = [], []
-        for cls in classes:
-            mask = (y_enrol == cls)
-            if not mask.any():
-                continue
-            gen_scores = [cosine_sim(v, templates[cls]) for v in feat_enrol[mask]]
-            frrs.append(float(np.mean(np.array(gen_scores) < tau)))
-            others = [c for c in classes if c != cls]
-            if others:
-                ic = int(rng.choice(others))
-                imp = feat_enrol[y_enrol == ic]
-                if len(imp):
-                    imp_scores = [cosine_sim(v, templates[cls]) for v in imp]
-                    fars.append(float(np.mean(np.array(imp_scores) >= tau)))
-        if not frrs or not fars:
-            continue
-        frr_m = np.mean(frrs)
-        far_m = np.mean(fars)
-        diff  = abs(frr_m - far_m)
-        if diff < best_diff:
-            best_diff = diff
-            eer_p     = p
-            eer_val   = (frr_m + far_m) / 2
+def compute_eer(by_day, cls2idx, feat_fn, rng):
+    """Pooled-across-days EER, scored on the held-out test split
+    (mirrors bandit_all.py's threshold_sweep methodology)."""
+    p2frr, p2far = {p: [] for p in P_SWEEP}, {p: [] for p in P_SWEEP}
+    for day, day_splits in sorted(by_day.items()):
+        all_enrol_X = [x for sp in day_splits for x in sp["X_enrol"]]
+        all_enrol_y = [cls2idx[sp["participant"]] for sp in day_splits
+                       for _ in sp["X_enrol"]]
+        feat_enrol = feat_array(all_enrol_X, feat_fn)
+        y_enrol    = np.array(all_enrol_y, dtype=int)
+        templates  = build_templates(feat_enrol, y_enrol)
+
+        # cache each subject's test-set feature vectors once per day instead
+        # of recomputing them on every one of the 25 P_SWEEP passes below
+        test_vecs_by_sp = [feat_array(sp["X_test"], feat_fn) if sp["X_test"] else None
+                            for sp in day_splits]
+
+        for p in P_SWEEP:
+            tau = compute_tau(templates, feat_enrol, y_enrol, p)
+            classes = list(templates.keys())
+            for sp, test_vecs in zip(day_splits, test_vecs_by_sp):
+                cls = cls2idx[sp["participant"]]
+                if cls not in templates or test_vecs is None:
+                    continue
+                gen_scores = [cosine_sim(v, templates[cls]) for v in test_vecs]
+                p2frr[p].append(float(np.mean(np.array(gen_scores) < tau)))
+                others = [c for c in classes if c != cls]
+                if others:
+                    imp_cls    = int(rng.choice(others))
+                    imp_scores = [cosine_sim(v, templates[imp_cls]) for v in test_vecs]
+                    p2far[p].append(float(np.mean(np.array(imp_scores) >= tau)))
+
+    diffs   = [abs(np.mean(p2frr[p]) - np.mean(p2far[p])) for p in P_SWEEP]
+    eer_p   = P_SWEEP[int(np.argmin(diffs))]
+    eer_val = (np.mean(p2frr[eer_p]) + np.mean(p2far[eer_p])) / 2
     return eer_p, eer_val
 
 
@@ -168,8 +174,8 @@ def run_dataset(ds_name, ds_cfg, feat_name, feat_fn):
     by_day           = pool_enrol(splits)
 
     per_subj_adv, per_subj_base = [], []
-    eer_vals = []
-    first_day = True
+
+    eer_p, eer_val = compute_eer(by_day, cls2idx, feat_fn, rng)
 
     for day, day_splits in sorted(by_day.items()):
         all_enrol_X = [x for sp in day_splits for x in sp["X_enrol"]]
@@ -201,11 +207,6 @@ def run_dataset(ds_name, ds_cfg, feat_name, feat_fn):
                 imp_scores = [cosine_sim(v, templates[cls]) for v in imp]
                 per_subj_base.append(float(np.mean(np.array(imp_scores) >= tau)))
 
-        if first_day:
-            eer_p, eer_val = compute_eer(templates, feat_enrol, y_enrol, rng)
-            eer_vals.append(eer_val)
-            first_day = False
-
         # adversarial FAR
         torch_seed = SEED + P * 31 + abs(hash(day)) % 10_000
         rng_atk    = np.random.default_rng(torch_seed)
@@ -216,7 +217,8 @@ def run_dataset(ds_name, ds_cfg, feat_name, feat_fn):
     result = dict(
         dataset      = ds_name,
         feature      = feat_name,
-        EER          = float(np.mean(eer_vals))   if eer_vals      else float("nan"),
+        EER          = eer_val,
+        EER_p        = eer_p,
         base_FAR_p10 = float(np.mean(per_subj_base)) if per_subj_base else float("nan"),
         adv_FAR_p10  = float(np.mean(per_subj_adv))  if per_subj_adv  else float("nan"),
     )
