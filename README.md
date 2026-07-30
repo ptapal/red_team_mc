@@ -38,7 +38,7 @@ Nearest-centroid classifier on log-covariance vectors (Riemannian manifold). Enr
 
 | Arm | Method |
 |-----|--------|
-| a_0 | Gaussian noise |
+| a0 | Gaussian noise |
 | a1 | Spatially correlated noise |
 | a2 | Temporal distortion (shuffle/crop/shift) |
 | a3 | Frequency band gain manipulation |

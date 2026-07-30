@@ -1,6 +1,5 @@
 ERPs/
-data/
 __pycache__/
 .vscode/
-*.pyc
 temp.py
+data/

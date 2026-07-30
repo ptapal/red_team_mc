@@ -1,13 +1,5 @@
 """
 Normalised multi-dataset comparison.
-Zhang:       15 subjects, 4 days (ERP / face-RSVP).
-Won:         15 subjects subsampled from 55 (fixed SEED), 1 day (ERP / P300-speller).
-Wang EO:    20 subjects subsampled from 60 (seed 42), 3 sessions (resting-state, eyes open).
-Wang EC:    20 subjects subsampled from 60 (seed 42), 3 sessions (resting-state, eyes closed).
-COG-BCI EO: 20 subjects (sub-10..sub-29), 3 sessions (resting-state, eyes open).
-COG-BCI EC: 20 subjects (sub-10..sub-29), 3 sessions (resting-state, eyes closed).
-Cho:         20 subjects subsampled from 52 (seed 42), 1 session (motor imagery).
-Lee:         20 subjects subsampled from 54 (seed 42), 2 sessions (motor imagery).
 """
 
 import sys as _sys, os as _os

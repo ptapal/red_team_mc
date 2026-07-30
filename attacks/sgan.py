@@ -1,24 +1,5 @@
 """
 Surrogate-gradient GAN: true minimax between G and D via backprop.
-
-A small differentiable surrogate S approximates the Riemannian authenticator
-score, bypassing the non-differentiable eigendecomposition in trial_to_cov_vec.
-This gives G real gradients from both the authenticator proxy (S) and the
-discriminator (D), making the adversarial game genuinely minimax.
-
-G loss = -(1-lambda)*S(X',mu_{k'})  [fool authenticator proxy]
-       +  lambda*budget             [stay small]
-       +  lambda_d*BCE(D(X'),1)     [fool discriminator]
-       +  beta*KL                   [VAE regularisation]
-
-D loss = BCE(D(X),1) + BCE(D(X'),0)
-
-S is trained once on enrollment data (MSE regression to real cosine_sim
-scores) then frozen during the attack.  G and D fight each other every
-iteration via true gradient descent/ascent -- no REINFORCE, no reward signals.
-
-FAR is measured on the real (non-differentiable) authenticator to keep
-results comparable with the UCB and VAE baselines.
 """
 
 import sys as _sys, os as _os

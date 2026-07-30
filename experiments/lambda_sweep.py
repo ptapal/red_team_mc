@@ -2,10 +2,6 @@
 Lambda ablation: UCB bandit at p=10 across lam in {0.0, 0.1, 0.3, 0.5}.
 
 Tests whether the arm preference ordering is robust to the dual-reward weight lambda.
-
-Output: results_lambda_ablation/
-    arm_means_{ds}.csv    -- per-arm mean reward at each lambda
-    arm_order_{ds}.csv    -- rank ordering of arms at each lambda
 """
 
 import sys as _sys, os as _os
