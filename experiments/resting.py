@@ -10,40 +10,12 @@ import matplotlib; matplotlib.use("Agg")
 
 warnings.filterwarnings("ignore")
 
-from helpers import load_sessions
-from bandit_all import (
-    P_SWEEP, P_ATTACK, SEED,
-    TANNER_20, COGBCI_SUBS,
-    TANNER_DAYS, COGBCI_DAYS,
-    threshold_sweep, run_ucb_attack,
-)
+from helpers  import load_sessions
+from datasets import get_datasets
+from bandit_all import P_SWEEP, P_ATTACK, SEED, threshold_sweep, run_ucb_attack
 
-DATASETS = {
-    "tanner_eo": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo",
-        participants= TANNER_20,
-        days        = TANNER_DAYS,
-        out_dir     = "results_tanner_eo",
-    ),
-    "tanner_ec": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec",
-        participants= TANNER_20,
-        days        = TANNER_DAYS,
-        out_dir     = "results_tanner_ec",
-    ),
-    "cogbci_eo": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo",
-        participants= COGBCI_SUBS,
-        days        = COGBCI_DAYS,
-        out_dir     = "results_cogbci_eo",
-    ),
-    "cogbci_ec": dict(
-        erp_root    = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec",
-        participants= COGBCI_SUBS,
-        days        = COGBCI_DAYS,
-        out_dir     = "results_cogbci_ec",
-    ),
-}
+_KEYS    = ("tanner_eo", "tanner_ec", "cogbci_eo", "cogbci_ec")
+DATASETS = {k: v for k, v in get_datasets("results").items() if k in _KEYS}
 
 summary = {}
 

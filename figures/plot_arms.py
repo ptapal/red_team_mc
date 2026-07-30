@@ -15,6 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from datasets import get_datasets
 
 ARM_PAPER_NAMES = [
     "Gaussian\nnoise",
@@ -39,16 +40,7 @@ CSV_ARM_NAMES = [
     "Eigenvalue Perturb",
 ]
 
-DATASETS = [
-    ("results_zhang",     "Zhang (face-RSVP, $N=15$)"),
-    ("results_won",       "Won (P300 speller, $N=15$)"),
-    ("results_tanner_eo", "Wang-EO ($N=20$)"),
-    ("results_tanner_ec", "Wang-EC ($N=20$)"),
-    ("results_cogbci_eo", "COG-BCI-EO ($N=20$)"),
-    ("results_cogbci_ec", "COG-BCI-EC ($N=20$)"),
-    ("results_cho",       "Cho (motor imagery, $N=20$)"),
-    ("results_lee",       "Lee (motor imagery, $N=20$)"),
-]
+DATASETS = [(v["out_dir"], v["label"]) for v in get_datasets("results").values()]
 
 P_REF = 10
 

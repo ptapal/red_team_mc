@@ -173,9 +173,7 @@ def _plot_convergence(rolling_far: list, ds_name: str, out_dir: str,
 def _plot_comparison(summary_sgan: dict, summary_vae: dict,
                      summary_gan: dict,  summary_ucb: dict,
                      out_dir: str) -> None:
-    ds_order = ["zhang", "won",
-                "tanner_eo", "tanner_ec", "cogbci_eo", "cogbci_ec",
-                "cho", "lee"]
+    ds_order = list(summary_sgan.keys())
     ds_names = [d for d in ds_order if d in summary_sgan]
 
     def _m(s, ds): return s.get(ds, {}).get(10, {}).get("mean_far", float("nan"))

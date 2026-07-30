@@ -1,12 +1,8 @@
 """
 Feature space comparison: Riemannian log-cov vs. Euclidean cov vs. PSD.
 
-Runs the UCB bandit attack at p=10 across all 8 datasets for each feature
-type. Reports baseline FAR, EER, and adversarial FAR.
-
-Output:
-  results_feature_comparison/feature_comparison.csv
-  results_feature_comparison/feature_comparison.png
+Runs the UCB bandit attack at p=10 across all 8 datasets for each feature type. 
+Reports baseline FAR, EER, and adversarial FAR.
 """
 
 import sys as _sys, os as _os
@@ -27,13 +23,7 @@ from utils   import cosine_sim, riemann_covariance
 from arms    import AttackArms
 from ucb     import UCBSelector
 from config  import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
-from bandit_all import (
-    WON_15, TANNER_20, TANNER_DAYS,
-    COGBCI_SUBS, COGBCI_DAYS,
-    CHO_20, CHO_DAYS, LEE_20, LEE_DAYS,
-    make_splits, pool_enrol,
-    DATASETS,
-)
+from bandit_all import make_splits, pool_enrol, DATASETS
 
 OUT_DIR  = "results_feature_comparison"
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -249,8 +239,7 @@ print("\nSaved:", os.path.join(OUT_DIR, "feature_comparison.csv"))
 print(df.to_string(index=False))
 
 
-ds_order   = ["zhang", "won", "tanner_eo", "tanner_ec",
-              "cogbci_eo", "cogbci_ec", "cho", "lee"]
+ds_order   = list(DATASETS.keys())
 feat_order = ["riemannian", "euclidean", "psd"]
 colors     = {"riemannian": "steelblue", "euclidean": "darkorange", "psd": "seagreen"}
 

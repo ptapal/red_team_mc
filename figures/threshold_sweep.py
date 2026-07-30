@@ -10,15 +10,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from helpers import load_sessions, build_within_session_splits
-from utils import trial_to_cov_vec, cosine_sim
-from config import SEED, ENROL_FRAC
+from helpers  import load_sessions, build_within_session_splits
+from utils    import trial_to_cov_vec, cosine_sim
+from config   import SEED, ENROL_FRAC
+from datasets import get_datasets
 
-participants = ["S" + str(i) for i in range(1, 16)]
-days         = ["Day_" + str(i) for i in [1, 7, 80, 200]]
+_zhang = get_datasets()["zhang"]
 
 print("Loading sessions …")
-sessions = load_sessions(participants, days)
+sessions = load_sessions(_zhang["participants"], _zhang["days"], erp_root=_zhang["erp_root"])
 print(f"Found {len(sessions)} valid sessions.")
 
 all_participants = sorted({s["participant"] for s in sessions})
