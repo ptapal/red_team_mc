@@ -1,0 +1,6 @@
+p,FAR_mean,FAR_std,best_arm,arm_Gaussian Noise,arm_Correlated Noise,arm_Temporal Distortion,arm_Freq Manipulation,arm_Cov Interpolation,arm_Replay + Jitter,arm_Channel Coupling,arm_Eigenvalue Perturb
+5,0.0020869565217391307,0.006266905303209477,Channel Coupling,0.0,0.0045662100456621,0.0,0.0,0.0,0.0,0.005649717514124294,0.0
+10,0.0,0.0,Gaussian Noise,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+15,0.002993585174625802,0.009949555480822143,Freq Manipulation,0.004672897196261682,0.0,0.0,0.015873015873015872,0.0,0.0,0.0,0.0
+20,0.000819672131147541,0.003572867986508749,Freq Manipulation,0.0,0.0,0.0,0.007575757575757576,0.0,0.0,0.0,0.0
+25,0.0016968325791855206,0.005140528401584509,Eigenvalue Perturb,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.04

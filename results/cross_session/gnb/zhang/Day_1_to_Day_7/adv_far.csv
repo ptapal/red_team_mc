@@ -1,0 +1,6 @@
+p,FAR_mean,FAR_std,best_arm,arm_Gaussian Noise,arm_Correlated Noise,arm_Temporal Distortion,arm_Freq Manipulation,arm_Cov Interpolation,arm_Replay + Jitter,arm_Channel Coupling,arm_Eigenvalue Perturb
+5,0.0,0.0,Gaussian Noise,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+10,0.0,0.0,Gaussian Noise,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+15,0.0,0.0,Gaussian Noise,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+20,0.0,0.0,Gaussian Noise,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+25,0.0,0.0,Gaussian Noise,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

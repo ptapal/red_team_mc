@@ -4,3 +4,4 @@ __pycache__/
 temp.py
 data/
 .venv_check/
+check_sgan_centrality.py
