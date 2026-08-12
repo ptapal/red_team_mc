@@ -1,16 +1,3 @@
-"""
-Black-box VAE-based generative perturbation attack.
-
-REINFORCE with exponential moving-average baseline:
-    loss = -advantage * log q(z | x) + beta_kl * KL(q || p)
-
-Reward mirrors the UCB dual objective:
-    r = (1 - lam) * accepted + lam * max(0, 1 - ||delta||_F / ||X||_F)
-
-Threat model: black-box access (accept/reject + similarity score),
-attacker holds victim EEG trials, random target identity per iteration.
-"""
-
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import math
@@ -63,13 +50,6 @@ class _Decoder(nn.Module):
 
 
 class VAEGenerator(nn.Module):
-    """
-    Conditioned perturbation generator.
-
-    Given a victim trial x, encodes to posterior q(z|x) = N(mu(x), diag(sigma^2(x))),
-    samples z, decodes to a perturbation direction, and scales by RMS amplitude of x
-    so the initial perturbation budget is ~O(1) regardless of signal magnitude.
-    """
 
     def __init__(self, input_dim: int,
                  latent_dim: int = LATENT_DIM):
@@ -80,29 +60,22 @@ class VAEGenerator(nn.Module):
         self.input_dim = input_dim
 
     def forward(self, x: torch.Tensor, rms: torch.Tensor):
-        """
-        x   : (1, input_dim)  flattened victim trial
-        rms : scalar           RMS amplitude of x (for budget-relative scaling)
-        Returns delta (1, input_dim), mu, log_var, z.
-        """
         mu, lv = self.encoder(x)
-        lv     = lv.clamp(-6, 2)                     # prevent sigma collapse/explosion
+        lv     = lv.clamp(-6, 2)                     
         std    = (0.5 * lv).exp()
         z      = mu + std * torch.randn_like(mu)
-        delta  = self.decoder(z) * rms               # signal-relative magnitude
+        delta  = self.decoder(z) * rms              
         return delta, mu, lv, z
 
 
 def _log_q(z: torch.Tensor,
            mu: torch.Tensor,
            lv: torch.Tensor) -> torch.Tensor:
-    """Sum of diagonal Gaussian log-probabilities over latent dims."""
     var = lv.exp() + 1e-8
     return -0.5 * torch.sum((z - mu).pow(2) / var + lv + math.log(2 * math.pi))
 
 
 def _kl(mu: torch.Tensor, lv: torch.Tensor) -> torch.Tensor:
-    """KL( N(mu, diag(exp(lv))) || N(0, I) )."""
     return -0.5 * torch.sum(1 + lv - mu.pow(2) - lv.exp())
 
 
@@ -114,17 +87,8 @@ def run_vae_attack(templates: dict,
                    rng: np.random.Generator,
                    lam: float = 0.3,
                    device: str = "cpu",
-                   seed: int = 42) -> tuple[list, dict]:
-    """
-    templates : {class_idx: template_vec}
-    tau       : acceptance threshold
-    X_test    : list of (C, T) arrays
-    y_test    : (N,) int array
-    n_iter    : number of training iterations
-    rng       : shared RNG (victim/target sampling)
-    lam       : dual-reward trade-off
-    Returns logs (one entry per iteration) and per_tgt accepted flags by class.
-    """
+                   seed: int = 42,
+                   score_fn=None) -> tuple[list, dict]:
     torch.manual_seed(seed)
 
     X_arr   = np.array(X_test)
@@ -167,9 +131,18 @@ def run_vae_attack(templates: dict,
             opt.zero_grad()
             continue
 
-        score    = cosine_sim(q, templates[tgt])
+        score    = (cosine_sim(q, templates[tgt]) if score_fn is None
+                    else float(score_fn(q, tgt)))
         accepted = bool(score >= tau)
         budget   = float(np.linalg.norm(Xp - X0) / (np.linalg.norm(X0) + 1e-9))
+
+        try:
+            q0 = trial_to_cov_vec(X0)
+            score0 = (cosine_sim(q0, templates[tgt]) if score_fn is None
+                      else float(score_fn(q0, tgt)))
+            accepted0 = bool(score0 >= tau)
+        except Exception:
+            accepted0 = None
         reward   = (1 - lam) * float(accepted) + lam * max(0.0, 1.0 - budget)
 
         advantage = reward - baseline
@@ -183,7 +156,8 @@ def run_vae_attack(templates: dict,
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         opt.step()
 
-        logs.append(dict(accepted=accepted, reward=reward, budget=budget))
+        logs.append(dict(accepted=accepted, reward=reward, budget=budget,
+                         accepted_zero_effort=accepted0))
         per_tgt[tgt].append(accepted)
 
     return logs, per_tgt

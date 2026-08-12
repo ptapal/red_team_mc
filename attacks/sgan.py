@@ -1,7 +1,3 @@
-"""
-Surrogate-gradient GAN: true minimax between G and D via backprop.
-"""
-
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import math
@@ -28,14 +24,6 @@ MAX_S_PAIRS  = 3000   # cap on training pairs; prevents 5+ GB tensors for MI
 
 
 class Surrogate(nn.Module):
-    """
-    Differentiable proxy for cosine_sim(trial_to_cov_vec(X), mu_target).
-
-    Input:  concat([flatten(X), mu_target])
-    Output: scalar approx cosine similarity in [-1, 1] (trained via MSE regression)
-
-    Conditioning on mu_target lets one S serve all identities in a session.
-    """
     def __init__(self, input_dim: int, template_dim: int):
         super().__init__()
         in_dim = input_dim + template_dim
@@ -87,12 +75,6 @@ class _Decoder(nn.Module):
 
 
 class VAEGenerator(nn.Module):
-    """
-    VAE perturbation generator with standard reparameterisation.
-
-    Unlike the REINFORCE variant in vae.py, z is NOT detached before
-    the decoder -- gradients flow end-to-end from loss -> decoder -> z -> encoder.
-    """
     def __init__(self, input_dim: int, latent_dim: int = LATENT_DIM):
         super().__init__()
         self.encoder = _Encoder(input_dim, latent_dim)
@@ -109,14 +91,6 @@ class VAEGenerator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    """
-    Binary classifier on raw flattened EEG.
-
-    Operates in raw signal space (not cov_vec space), so D is fully
-    differentiable wrt X and G receives gradients from D via backprop.
-
-    Output: raw logit  (1 = genuine, 0 = adversarially perturbed)
-    """
     def __init__(self, input_dim: int):
         super().__init__()
         hd = D_HIDDEN_DIM
@@ -142,14 +116,8 @@ def train_surrogate(
     device: str = "cpu",
     n_epochs: int = S_EPOCHS,
     seed: int = 42,
+    score_fn=None,
 ) -> "Surrogate":
-    """
-    Train S to approximate cosine_sim(trial_to_cov_vec(X), mu_target).
-
-    For each enrollment trial (X_i, k_i) we create a training pair against
-    every possible target k', giving K x N_enroll regression examples.
-    This exposes S to both genuine (k'=k_i) and impostor (k'!=k_i) distributions.
-    """
     torch.manual_seed(seed)
     classes      = list(templates.keys())
     input_dim    = int(np.prod(X_enroll[0].shape))
@@ -167,7 +135,8 @@ def train_surrogate(
     for i, (q, x) in enumerate(zip(cov_vecs, valid_X)):
         x_flat = x.flatten().astype(np.float32)
         for k in classes:
-            s = cosine_sim(q, templates[k])
+            s = (cosine_sim(q, templates[k]) if score_fn is None
+                 else float(score_fn(q, k)))
             xs_list.append(x_flat)
             mus_list.append(templates[k].astype(np.float32))
             scores_list.append(float(s))
@@ -199,6 +168,16 @@ def train_surrogate(
             loss.backward()
             opt_S.step()
 
+    with torch.no_grad():
+        pred = S(xs_t, mus_t).cpu().numpy()
+    true = np.asarray(scores_list, dtype=float)
+    denom = float(pred.std() * true.std())
+    S.fidelity = dict(
+        r   = float(np.corrcoef(pred, true)[0, 1]) if denom > 1e-12 else float("nan"),
+        mse = float(np.mean((pred - true) ** 2)),
+        n   = int(len(true)),
+    )
+
     S.eval()
     return S
 
@@ -215,15 +194,9 @@ def run_surrogate_gan_attack(
     lam: float = 0.3,
     device: str = "cpu",
     seed: int = 42,
+    score_fn=None,
+    surrogate_score_fn=None,
 ) -> tuple[list, dict, "Discriminator", "Surrogate", "VAEGenerator"]:
-    """
-    True minimax GAN attack with surrogate authenticator.
-
-    S is trained once on enrollment data then frozen. FAR is measured on the
-    real Riemannian authenticator (not S) for comparability with UCB/VAE.
-
-    Returns logs, per_tgt, D, S, G.
-    """
     torch.manual_seed(seed)
 
     X_arr   = np.array(X_test)
@@ -232,8 +205,9 @@ def run_surrogate_gan_attack(
     per_tgt = {int(c): [] for c in classes}
 
     input_dim    = int(np.prod(X_arr.shape[1:]))
-
-    S = train_surrogate(templates, X_enroll, y_enroll, device=device, seed=seed)
+    S = train_surrogate(templates, X_enroll, y_enroll, device=device, seed=seed,
+                        score_fn=(surrogate_score_fn if surrogate_score_fn
+                                  is not None else score_fn))
     S.eval()
     for param in S.parameters():
         param.requires_grad_(False)
@@ -265,14 +239,13 @@ def run_surrogate_gan_attack(
 
         G.train()
         delta, mu_z, lv_z = G(x_flat)
-        x_prime = x_flat + delta             # grad flows all the way to encoder
+        x_prime = x_flat + delta            
 
-        s_score = S(x_prime, mu_tgt)         # scalar, grad wrt x_prime
+        s_score = S(x_prime, mu_tgt)        
 
         D.train()
         d_logit_fake = D(x_prime)
 
-        # budget: ||delta||_2 / ||x||_2, differentiable
         budget_t = delta.norm() / (x_flat.norm() + 1e-9)
 
         loss_G = (
@@ -306,15 +279,25 @@ def run_surrogate_gan_attack(
         except Exception:
             continue
 
-        real_score = cosine_sim(q_adv, templates[tgt])
+        real_score = (cosine_sim(q_adv, templates[tgt]) if score_fn is None
+                      else float(score_fn(q_adv, tgt)))
         accepted   = bool(real_score >= tau)
         budget_np  = float(np.linalg.norm(xp_np - X0) / (np.linalg.norm(X0) + 1e-9))
+
+        try:
+            q0 = trial_to_cov_vec(X0)
+            score0 = (cosine_sim(q0, templates[tgt]) if score_fn is None
+                      else float(score_fn(q0, tgt)))
+            accepted0 = bool(score0 >= tau)
+        except Exception:
+            accepted0 = None
 
         logs.append(dict(
             accepted = accepted,
             s_score  = float(s_score.detach()),
             d_score  = float(torch.sigmoid(d_logit_fake).detach()),
             budget   = budget_np,
+            accepted_zero_effort = accepted0,
         ))
         per_tgt[tgt].append(accepted)
 
