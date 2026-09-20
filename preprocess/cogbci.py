@@ -4,15 +4,12 @@ Preprocess COG-BCI resting-state EEG (Hinss et al. 2023) into the same CSV forma
 Participants 1–9 are excluded: electrode Cz was not recorded for them.
 
 Channel note: CP5 is absent in sub-17, sub-25, sub-26, sub-28, sub-29. CP5 is therefore dropped globally.
-Output directories:
-    ERPs_cogbci_eo/  — eyes-open condition
-    ERPs_cogbci_ec/  — eyes-closed condition
+Output directories: <RTMC_DATA>/preprocessed/cogbci/eo/  — eyes-open condition
+                    <RTMC_DATA>/preprocessed/cogbci/ec/  — eyes-closed condition
 
-Structure mirrors existing ERPs dirs: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
+Structure: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import os
 import numpy as np
 import pandas as pd
@@ -20,23 +17,20 @@ import mne
 
 mne.set_log_level("WARNING")
 
-COGBCI_ROOT = "/Users/a1234/red_team_mc/data/raw/cogbci/cog_bci"
-OUT_EO      = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/eo"
-OUT_EC      = "/Users/a1234/red_team_mc/data/preprocessed/cogbci/ec"
+from paths import RAW_ROOT, PREP_ROOT
+from config import (SFREQ_TARGET, TRIAL_SAMPLES, MIN_WINDOWS,
+                    WON_CHANNELS_31, BANDPASS_WIDE)
 
-SFREQ_OUT  = 250
-L_FREQ     = 1.0
-H_FREQ     = 30.0
-WIN_SAMPS  = 162
-MIN_WINS   = 5
+COGBCI_ROOT = str(RAW_ROOT / "cogbci/cog_bci")
+OUT_EO      = str(PREP_ROOT / "cogbci/eo")
+OUT_EC      = str(PREP_ROOT / "cogbci/ec")
 
-# CP5 absent in sub-17/25/26/28/29 -> dropped globally for consistency (31 channels)
-WON_CHANNELS = [
-    "Fp1", "AF3", "F7", "F3", "FC1", "FC5", "T7",  "C3",
-    "CP1",        "P7", "P3", "Pz",  "PO3", "O1",  "Oz",
-    "O2",  "PO4", "P4", "P8", "CP6", "CP2", "C4",  "T8",
-    "FC6", "FC2", "F4", "F8", "AF4", "Fp2", "Fz",  "Cz",
-]
+SFREQ_OUT  = SFREQ_TARGET
+L_FREQ, H_FREQ = BANDPASS_WIDE   # 1-30 Hz: resting state
+WIN_SAMPS  = TRIAL_SAMPLES
+MIN_WINS   = MIN_WINDOWS
+
+WON_CHANNELS = WON_CHANNELS_31
 WON_LOWER = {c.lower(): c for c in WON_CHANNELS}
 
 # sub-01 to sub-09 excluded (no Cz); sub-10 to sub-29 retained

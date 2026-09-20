@@ -6,8 +6,6 @@ Abandoned arms (FAR=0) shown in light grey to distinguish from active arms.
 Saves arm_far_p10.png in each results directory.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import os
 import numpy as np
 import pandas as pd

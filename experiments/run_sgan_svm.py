@@ -1,6 +1,3 @@
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import csv
 import time
@@ -16,10 +13,10 @@ from helpers  import load_sessions
 from config   import SEED
 from utils    import trial_to_cov_vec
 from datasets import get_datasets
-from bandit_all import make_splits, pool_enrol, cov_array, P_ATTACK
+from experiments.bandit_all import make_splits, pool_enrol, cov_array, P_ATTACK
 from attacks.sgan import run_surrogate_gan_attack
-from run_vae_clf import stable_seed
-from run_svm import (build_svm_models, svm_score, oof_genuine_scores,
+from experiments.run_vae_clf import stable_seed
+from experiments.run_svm import (build_svm_models, svm_score, oof_genuine_scores,
                      compute_tau_svm)
 
 DEVICE   = "cuda" if torch.cuda.is_available() else "cpu"

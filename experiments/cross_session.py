@@ -1,6 +1,3 @@
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
 
@@ -17,7 +14,7 @@ from config   import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
 from arms     import AttackArms
 from ucb      import UCBSelector
 from datasets import get_datasets
-from bandit_all import cov_array, P_SWEEP, P_ATTACK, N_ITER, LAMBDA, build_templates
+from experiments.bandit_all import cov_array, P_SWEEP, P_ATTACK, N_ITER, LAMBDA, build_templates
 from run_gnb     import build_gnb_models, gnb_score
 
 CROSS_SESSION_DATASETS = ["zhang", "tanner_eo", "tanner_ec", "cogbci_eo", "cogbci_ec", "lee"]

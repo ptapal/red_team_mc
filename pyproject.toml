@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "red-team-mc"
+version = "1.0.0"
+description = "Red-team evaluation of EEG biometric authentication across three recording paradigms"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "Polina Tapal" }]
+dependencies = [
+    "numpy==2.5.1",
+    "scipy==1.18.0",
+    "pandas==3.0.5",
+    "matplotlib==3.11.1",
+    "torch==2.13.0",
+    "scikit-learn==1.9.0",
+    "mne==1.10.0",
+]
+
+[tool.setuptools]
+py-modules = ["arms", "config", "datasets", "helpers", "paths", "ucb", "utils"]
+packages = ["attacks", "experiments", "figures", "preprocess"]

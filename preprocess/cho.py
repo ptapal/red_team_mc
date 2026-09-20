@@ -2,13 +2,11 @@
 Preprocess Cho et al. 2017 motor imagery EEG into the same CSV format used by load_sessions() in helpers.py.
 
 Output directory:
-    ERPs_cho/
+    <RTMC_DATA>/preprocessed/cho/
 
-Structure mirrors existing datasets: {out_dir}/{sub_id}/session1/block/trial_{NNN:03d}.csv
+Structure: {out_dir}/{sub_id}/session1/block/trial_{NNN:03d}.csv
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import os
 import numpy as np
 import pandas as pd
@@ -17,13 +15,15 @@ import mne
 
 mne.set_log_level("WARNING")
 
-MAT_DIR  = "/Users/a1234/red_team_mc/data/raw/cho/gigadb-datasets/live/pub/10.5524/100001_101000/100295/mat_data"
-OUT_DIR  = "/Users/a1234/red_team_mc/data/preprocessed/cho"
+from paths import RAW_ROOT, PREP_ROOT
+from config import SFREQ_TARGET, WON_CHANNELS_32, BANDPASS_WIDE
+
+MAT_DIR  = str(RAW_ROOT / "cho/gigadb-datasets/live/pub/10.5524/100001_101000/100295/mat_data")
+OUT_DIR  = str(PREP_ROOT / "cho")
 
 SFREQ_IN  = 512
-SFREQ_OUT = 250
-L_FREQ    = 1.0
-H_FREQ    = 30.0
+SFREQ_OUT = SFREQ_TARGET
+L_FREQ, H_FREQ = BANDPASS_WIDE   # 1-30 Hz: motor imagery
 
 N_EEG     = 64       # first 64 channels are EEG; 65-68 are EMG
 PRE_SAMP  = 1024     # samples before cue onset at 512 Hz (= 2000 ms)
@@ -42,12 +42,7 @@ CHO_ALL_CH = [
 ]
 
 # 32-channel Won subset ; matches RSVP pair (C=32, D=528)
-WON_CHANNELS = [
-    "Fp1", "AF3", "F7",  "F3",  "FC1", "FC5", "T7",  "C3",
-    "CP1", "CP5", "P7",  "P3",  "Pz",  "PO3", "O1",  "Oz",
-    "O2",  "PO4", "P4",  "P8",  "CP6", "CP2", "C4",  "T8",
-    "FC6", "FC2", "F4",  "F8",  "AF4", "Fp2", "Fz",  "Cz",
-]
+WON_CHANNELS = WON_CHANNELS_32
 
 SUBJECTS = [f"s{i:02d}" for i in range(1, 53)]
 MIN_TRIALS = 10

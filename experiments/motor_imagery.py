@@ -1,8 +1,5 @@
 """Run analysis for motor imagery datasets only (Cho + Lee)."""
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os, warnings
 import matplotlib; matplotlib.use("Agg")
 
@@ -10,7 +7,7 @@ warnings.filterwarnings("ignore")
 
 from helpers  import load_sessions
 from datasets import get_datasets
-from bandit_all import P_SWEEP, P_ATTACK, threshold_sweep, run_ucb_attack
+from experiments.bandit_all import P_SWEEP, P_ATTACK, threshold_sweep, run_ucb_attack
 
 _KEYS    = ("cho", "lee")
 DATASETS = {k: v for k, v in get_datasets("results").items() if k in _KEYS}

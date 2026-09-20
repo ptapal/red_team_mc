@@ -4,16 +4,9 @@ Surrogate-gradient GAN attack — all 8 datasets.
 True minimax: G and D fight via backprop.  
 S is a frozen surrogate trained on enrollment data.
 
-Conditions shared with UCB / VAE / pseudo-GAN evaluations:
-    - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
-    - Same dual-reward weight λ=0.3 (authenticator/budget tradeoff in G's loss)
-    - Same T=1000 iterations per (day, p) combination
-    - FAR measured on the real Riemannian authenticator (not S)
+Conditions shared with UCB / VAE / pseudo-GAN evaluations.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
 
@@ -28,7 +21,7 @@ warnings.filterwarnings("ignore")
 from helpers  import load_sessions
 from config   import SEED
 from datasets import get_datasets
-from bandit_all import (
+from experiments.bandit_all import (
     DATASETS as UCB_DATASETS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     P_ATTACK,

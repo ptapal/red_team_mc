@@ -1,15 +1,12 @@
 """
-Preprocess Tanner et al. 2022 resting-state EEG (BIDS, ds004148) into the same CSV format used by load_sessions() in helpers.py.
+Preprocess Wang et al. 2022 resting-state EEG (BIDS, ds004148) into the same CSV format used by load_sessions() in helpers.py.
 
-Output directories:
-    ERPs_tanner_eo/  — eyes-open condition
-    ERPs_tanner_ec/  — eyes-closed condition
+Output directories: <RTMC_DATA>/preprocessed/wang/eo/  — eyes-open condition
+                    <RTMC_DATA>/preprocessed/wang/ec/  — eyes-closed condition
 
-Structure mirrors existing ERPs_zhang_reduced / ERPs_won: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
+Structure mirrors the zhang and won outputs: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import os
 import numpy as np
 import pandas as pd
@@ -17,23 +14,20 @@ import mne
 
 mne.set_log_level("WARNING")
 
-BIDS_ROOT  = "/Users/a1234/red_team_mc/data/raw/wang/ds004148"
-OUT_EO     = "/Users/a1234/red_team_mc/data/preprocessed/wang/eo"
-OUT_EC     = "/Users/a1234/red_team_mc/data/preprocessed/wang/ec"
+from paths import RAW_ROOT, PREP_ROOT
+from config import (SFREQ_TARGET, TRIAL_SAMPLES, MIN_WINDOWS,
+                    WON_CHANNELS_31, BANDPASS_WIDE)
 
-SFREQ_OUT  = 250          # target sampling rate (Hz)
-L_FREQ     = 1.0          # bandpass low
-H_FREQ     = 30.0         # bandpass high
-WIN_SAMPS  = 162          # samples per window at 250 Hz = 648 ms
-MIN_WINS   = 5            # discard recordings with fewer windows
+BIDS_ROOT  = str(RAW_ROOT / "wang/ds004148")
+OUT_EO     = str(PREP_ROOT / "wang/eo")
+OUT_EC     = str(PREP_ROOT / "wang/ec")
 
-# 31 channels: Won set minus CP5 (dropped to match COG-BCI intersection set)
-WON_CHANNELS = [
-    "Fp1", "AF3", "F7", "F3", "FC1", "FC5", "T7",  "C3",
-    "CP1",        "P7", "P3", "Pz",  "PO3", "O1",  "Oz",
-    "O2",  "PO4", "P4", "P8", "CP6", "CP2", "C4",  "T8",
-    "FC6", "FC2", "F4", "F8", "AF4", "Fp2", "Fz",  "Cz",
-]
+SFREQ_OUT  = SFREQ_TARGET
+L_FREQ, H_FREQ = BANDPASS_WIDE   # 1-30 Hz: resting state
+WIN_SAMPS  = TRIAL_SAMPLES
+MIN_WINS   = MIN_WINDOWS
+
+WON_CHANNELS = WON_CHANNELS_31
 # lowercase set for matching
 WON_LOWER = {c.lower(): c for c in WON_CHANNELS}
 
@@ -71,7 +65,7 @@ def process_file(vhdr_path):
 
     raw.pick_channels(ch_picks)
 
-    # bandpass 1-10 Hz, zero-phase (MNE default for filter_data is linear phase FIR,
+    # bandpass 1-30 Hz, zero-phase (MNE default for filter_data is linear phase FIR,
     # which is zero-phase when applied forward-only; use method='iir' to match ERP pipeline)
     raw.filter(L_FREQ, H_FREQ, method="iir", iir_params={"order": 4, "ftype": "butter"},
                verbose=False)

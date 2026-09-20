@@ -1,8 +1,5 @@
 """Run analysis for resting-state datasets only (Tanner EO/EC + COG-BCI EO/EC)."""
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import numpy as np
 import pandas as pd
 import os, warnings
@@ -12,7 +9,7 @@ warnings.filterwarnings("ignore")
 
 from helpers  import load_sessions
 from datasets import get_datasets
-from bandit_all import P_SWEEP, P_ATTACK, SEED, threshold_sweep, run_ucb_attack
+from experiments.bandit_all import P_SWEEP, P_ATTACK, SEED, threshold_sweep, run_ucb_attack
 
 _KEYS    = ("tanner_eo", "tanner_ec", "cogbci_eo", "cogbci_ec")
 DATASETS = {k: v for k, v in get_datasets("results").items() if k in _KEYS}

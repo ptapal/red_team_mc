@@ -1,8 +1,9 @@
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import csv
+import os
 
-RESULTS = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'results')
+from paths import REPO_ROOT
+
+RESULTS = str(REPO_ROOT / "results")
 
 STREAMS = [
     ("Zhang",      "RSVP",  "zhang/threshold_sweep_std.csv",       "zhang/adv_far_std.csv"),
@@ -17,7 +18,7 @@ STREAMS = [
 
 
 def read(path):
-    with open(_os.path.join(RESULTS, path)) as fh:
+    with open(os.path.join(RESULTS, path)) as fh:
         return list(csv.DictReader(fh))
 
 
@@ -50,7 +51,7 @@ for name, para, base_f, adv_f in STREAMS:
         print(f"{name:<12}{para:<6}{int(p):>4}{base:>8.3f}{adv:>8.3f}{adv - base:>+9.3f}")
     print()
 
-out = _os.path.join(RESULTS, "attacker_lift.csv")
+out = os.path.join(RESULTS, "attacker_lift.csv")
 with open(out, "w", newline="") as fh:
     w = csv.DictWriter(fh, fieldnames=list(rows_out[0].keys()))
     w.writeheader()

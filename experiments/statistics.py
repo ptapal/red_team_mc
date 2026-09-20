@@ -6,9 +6,6 @@ Tests whether the best and worst arm produce statistically different reward
 distributions using the one-sided Mann-Whitney U test.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os, warnings
 import numpy as np
 import pandas as pd
@@ -19,7 +16,7 @@ warnings.filterwarnings("ignore")
 from helpers import load_sessions
 from config  import SEED
 from datasets import get_datasets
-from bandit_all import (
+from experiments.bandit_all import (
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     _attack_loop, ARM_NAMES, LAMBDA,
 )

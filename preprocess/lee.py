@@ -1,14 +1,11 @@
 """
 Preprocess Lee et al. 2019 motor imagery EEG into the same CSV format used by load_sessions() in helpers.py.
 
-Output directory:
-  ERPs_lee/
+Output directory: <RTMC_DATA>/preprocessed/lee/
 
 Structure: {out_dir}/{sub_id}/{session}/block/trial_{NNN:03d}.csv
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import os
 import numpy as np
 import pandas as pd
@@ -17,13 +14,15 @@ import mne
 
 mne.set_log_level("WARNING")
 
-LEE_ROOT = "/Users/a1234/red_team_mc/data/raw/lee/gigadb-datasets/live/pub/10.5524/100001_101000/100542"
-OUT_DIR  = "/Users/a1234/red_team_mc/data/preprocessed/lee"
+from paths import RAW_ROOT, PREP_ROOT
+from config import SFREQ_TARGET, WON_CHANNELS_32, BANDPASS_WIDE
+
+LEE_ROOT = str(RAW_ROOT / "lee/gigadb-datasets/live/pub/10.5524/100001_101000/100542")
+OUT_DIR  = str(PREP_ROOT / "lee")
 
 SFREQ_IN  = 1000
-SFREQ_OUT = 250
-L_FREQ    = 1.0
-H_FREQ    = 30.0
+SFREQ_OUT = SFREQ_TARGET
+L_FREQ, H_FREQ = BANDPASS_WIDE   # 1-30 Hz: motor imagery
 
 N_CH      = 62      # total Lee EEG channels (used to build RawArray)
 SAMPS_IN  = 4000    # samples per trial at 1000 Hz (4 s)
@@ -42,12 +41,7 @@ LEE_ALL_CH = [
 ]
 
 # 32-channel Won subset ; matches RSVP pair (C=32, D=528)
-WON_CHANNELS = [
-    "Fp1", "AF3", "F7",  "F3",  "FC1", "FC5", "T7",  "C3",
-    "CP1", "CP5", "P7",  "P3",  "Pz",  "PO3", "O1",  "Oz",
-    "O2",  "PO4", "P4",  "P8",  "CP6", "CP2", "C4",  "T8",
-    "FC6", "FC2", "F4",  "F8",  "AF4", "Fp2", "Fz",  "Cz",
-]
+WON_CHANNELS = WON_CHANNELS_32
 
 SESSIONS  = ["session1", "session2"]
 N_SUBJECTS = 54

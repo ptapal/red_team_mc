@@ -1,6 +1,3 @@
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import csv
 import time
@@ -22,11 +19,11 @@ warnings.filterwarnings("ignore")
 from helpers  import load_sessions
 from config   import SEED
 from datasets import get_datasets
-from bandit_all import make_splits, pool_enrol, cov_array, P_ATTACK
+from experiments.bandit_all import make_splits, pool_enrol, cov_array, P_ATTACK
 from attacks.vae import run_vae_attack
 
-from run_gnb import build_gnb_models, gnb_score, compute_tau_gnb
-from run_svm import (build_svm_models, svm_score, oof_genuine_scores,
+from experiments.run_gnb import build_gnb_models, gnb_score, compute_tau_gnb
+from experiments.run_svm import (build_svm_models, svm_score, oof_genuine_scores,
                      compute_tau_svm)
 
 DEVICE   = "cuda" if torch.cuda.is_available() else "cpu"

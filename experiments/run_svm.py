@@ -1,6 +1,3 @@
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
 
@@ -20,7 +17,7 @@ from config   import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
 from arms     import AttackArms
 from ucb      import UCBSelector
 from datasets import get_datasets
-from bandit_all import make_splits, pool_enrol, cov_array, P_SWEEP, P_ATTACK, N_ITER, LAMBDA
+from experiments.bandit_all import make_splits, pool_enrol, cov_array, P_SWEEP, P_ATTACK, N_ITER, LAMBDA
 
 DATASETS = get_datasets("results")
 OUT_ROOT = "results/svm"

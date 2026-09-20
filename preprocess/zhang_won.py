@@ -1,13 +1,10 @@
 """
 Won et al. (2022) RSVP preprocessing pipeline.
 
-Outputs:
-    ERPs_won/S{sub_num}/Day_1/block_1/trial_{n}.csv   — Won trials
-    ERPs_zhang_reduced/{participant}/{day}/{block}/trial_N.csv — Zhang 32-ch
+Outputs: <RTMC_DATA>/preprocessed/won/S{sub_num}/Day_1/block_1/trial_{n}.csv   — Won trials
+         <RTMC_DATA>/preprocessed/zhang/won_channels/{participant}/{day}/{block}/trial_N.csv — Zhang 32-ch
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import os
 import numpy as np
 import pandas as pd
@@ -15,17 +12,19 @@ import mne
 
 mne.set_log_level("ERROR")
 
-BIDS_ROOT          = "/Users/a1234/red_team_mc/data/raw/won/eeg_bids/Won2022_BIDS"
-WON_OUT            = "/Users/a1234/red_team_mc/data/preprocessed/won"
-ZHANG_ROOT         = "/Users/a1234/red_team_mc/data/preprocessed/zhang/full_epochs"
-ZHANG_REDUCED_OUT  = "/Users/a1234/red_team_mc/data/preprocessed/zhang/won_channels"
+from paths import RAW_ROOT, PREP_ROOT
+from config import SFREQ_TARGET as SFREQ_CFG, TRIAL_SAMPLES, BANDPASS_RSVP
 
-SFREQ_TARGET = 250          # Hz; match Zhang
+BIDS_ROOT          = str(RAW_ROOT / "won/eeg_bids/Won2022_BIDS")
+WON_OUT            = str(PREP_ROOT / "won")
+ZHANG_ROOT         = str(PREP_ROOT / "zhang/full_epochs")
+ZHANG_REDUCED_OUT  = str(PREP_ROOT / "zhang/won_channels")
+
+SFREQ_TARGET = SFREQ_CFG    # Hz; match Zhang
+L_FREQ, H_FREQ = BANDPASS_RSVP   # 1-10 Hz: RSVP, narrower than the other paradigms
 T_PRE        = 0.050        # 50 ms pre-stimulus
-N_SAMPLES    = 162          # must equal Zhang trial length
-# tmax computed so that after resample we get exactly N_SAMPLES:
-#   floor((T_PRE + T_POST) * SFREQ_TARGET) = N_SAMPLES
-#   T_POST = N_SAMPLES/SFREQ_TARGET - T_PRE = 0.648 - 0.050 = 0.598
+N_SAMPLES    = TRIAL_SAMPLES  # must equal Zhang trial length
+# tmax computed so that after resample we get exactly N_SAMPLES
 T_POST = N_SAMPLES / SFREQ_TARGET - T_PRE   # 0.598 s
 
 MIN_TRIALS = 4
@@ -62,7 +61,7 @@ def process_won_subject(sub_dir: str, sub_label: str, out_root: str) -> int:
     raw = mne.io.read_raw_eeglab(set_file, preload=True, verbose=False)
 
     # bandpass 1-10 Hz (IIR, same band as Zhang et al.)
-    raw.filter(1.0, 10.0, method="iir", verbose=False)
+    raw.filter(L_FREQ, H_FREQ, method="iir", verbose=False)
 
     events, _ = mne.events_from_annotations(raw, verbose=False)
     target_events = events[events[:, 2] == 1]

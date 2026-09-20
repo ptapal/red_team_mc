@@ -1,7 +1,20 @@
+# data and local environments
 ERPs/
-__pycache__/
-.vscode/
-temp.py
 data/
 .venv_check/
+.venv/
+
+# python build artifacts
+__pycache__/
+*.egg-info/
+build/
+dist/
+
+# editor and OS
+.vscode/
+.DS_Store
+
+# scratch
+temp.py
+Claude outputs/
 check_sgan_centrality.py

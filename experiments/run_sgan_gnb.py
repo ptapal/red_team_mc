@@ -1,31 +1,10 @@
 """
 Surrogate-gradient GAN (SGAN) against the Gaussian Naive Bayes authenticator.
 
-Conditioning. For nearest-centroid the surrogate is conditioned on mu_k and the
-score is the linear functional mu_k . q; for the linear SVM it is w_k . q + b_k
-(run_sgan_svm.py). A one-vs-all GNB with diagonal covariance is not linear in q
-but quadratic: its log-odds are
-
-    log P(genuine|q) - log P(impostor|q) = sum_d a_kd q_d^2 + sum_d b_kd q_d + c_k,
-    a_kd = 0.5 (1/var_0d - 1/var_1d),   b_kd = mu_1d/var_1d - mu_0d/var_0d,
-
-so the identity-specific part of the decision rule is carried by the pair
-(a_k, b_k). Conditioning on their concatenation is the direct analogue of
-conditioning on mu_k, at twice the dimension.
-
-Regression target. GNB returns a posterior probability, which saturates at 0/1
-and regresses poorly under MSE. The surrogate therefore regresses the log-odds
-above, which is a monotone transform of that probability and so preserves the
-accept/reject decision at every threshold. Acceptance is always evaluated with
-the real gnb_score against tau, exactly as for the other attackers.
-
 Usage:  python experiments/run_sgan_gnb.py [--datasets a,b]
 Writes results/sgan_gnb/<dataset>/adv_far_sgan.csv and results/sgan_gnb/summary.csv.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import csv
 import time
@@ -41,10 +20,10 @@ from helpers  import load_sessions
 from config   import SEED
 from utils    import trial_to_cov_vec
 from datasets import get_datasets
-from bandit_all import make_splits, pool_enrol, cov_array, P_ATTACK
+from experiments.bandit_all import make_splits, pool_enrol, cov_array, P_ATTACK
 from attacks.sgan import run_surrogate_gan_attack
-from run_vae_clf import stable_seed
-from run_gnb import build_gnb_models, gnb_score, compute_tau_gnb
+from experiments.run_vae_clf import stable_seed
+from experiments.run_gnb import build_gnb_models, gnb_score, compute_tau_gnb
 
 DEVICE   = "cuda" if torch.cuda.is_available() else "cpu"
 LAMBDA   = 0.3

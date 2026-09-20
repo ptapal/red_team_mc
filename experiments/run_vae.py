@@ -2,16 +2,9 @@
 VAE-based generative perturbation attack — all 8 datasets.
 
 Exact same experimental conditions as the UCB MAB evaluation in
-bandit_all.py:
-    - Same subject subsamples, days, enrollment/test splits (SEED=42, rho=0.5)
-    - Same reward function: r = (1-lam)*accepted + lam*max(0, 1-budget), lam=0.3
-    - Same operating points: p in {5, 10, 15, 20, 25}
-    - Same T=1000 iterations per (day, p) combination
+bandit_all.py.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
 import math
@@ -28,7 +21,7 @@ from helpers  import load_sessions
 from config   import SEED
 from utils    import trial_to_cov_vec, cosine_sim
 from datasets import get_datasets
-from bandit_all import (
+from experiments.bandit_all import (
     DATASETS as UCB_DATASETS,
     make_splits, pool_enrol, build_templates, compute_tau, cov_array,
     P_ATTACK,

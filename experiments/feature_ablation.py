@@ -5,9 +5,6 @@ Runs the UCB bandit attack at p=10 across all 8 datasets for each feature type.
 Reports baseline FAR, EER, and adversarial FAR.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
-_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import os
 import warnings
 import numpy as np
@@ -23,7 +20,7 @@ from utils   import cosine_sim, riemann_covariance
 from arms    import AttackArms
 from ucb     import UCBSelector
 from config  import SEED, N_ARMS, ARM_NAMES, DEFAULT_C_UCB
-from bandit_all import make_splits, pool_enrol, DATASETS
+from experiments.bandit_all import make_splits, pool_enrol, DATASETS
 
 OUT_DIR  = "results/feature_comparison"
 os.makedirs(OUT_DIR, exist_ok=True)

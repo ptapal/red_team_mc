@@ -4,8 +4,6 @@ using the RiemannAuthenticator on the existing within-session splits.
 Produces a plot of FRR and FAR vs p, and prints the results table.
 """
 
-import sys as _sys, os as _os
-_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
 import numpy as np
 import matplotlib.pyplot as plt
 import os
